@@ -1,0 +1,901 @@
+.reservaplus-shell {
+  display: grid;
+  gap: 20px;
+  margin: 0 auto;
+  max-width: 1480px;
+  padding: 18px;
+}
+
+.reservaplus-shell .btn-primary {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ffffff;
+}
+
+.reservaplus-shell .btn-primary:hover,
+.reservaplus-shell .btn-primary:focus {
+  background: #0b5f59;
+  border-color: #0b5f59;
+  color: #ffffff;
+}
+
+.reservaplus-shell .btn-outline-primary {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+.reservaplus-shell .btn-outline-primary:hover,
+.reservaplus-shell .btn-outline-primary:focus {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #ffffff;
+}
+
+.reservaplus-hero .btn-primary {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.reservaplus-hero .btn-primary:hover,
+.reservaplus-hero .btn-primary:focus {
+  background: #f0fdfa;
+  border-color: #f0fdfa;
+  color: #0b5f59;
+}
+
+.reservaplus-hero .btn-outline-primary {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+}
+
+.reservaplus-hero .btn-outline-primary:hover,
+.reservaplus-hero .btn-outline-primary:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+.reservaplus-hero,
+.reservaplus-toolbar,
+.reservaplus-panel {
+  background: #ffffff;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(28, 40, 54, 0.06);
+}
+
+.reservaplus-hero {
+  align-items: center;
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2563eb 100%);
+  border: none;
+  box-shadow: 0 12px 32px rgba(15, 118, 110, 0.22);
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  min-height: 156px;
+  overflow: hidden;
+  padding: 28px 32px;
+  position: relative;
+}
+
+.reservaplus-hero::before {
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='28'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.reservaplus-hero > * {
+  position: relative;
+}
+
+.reservaplus-kicker {
+  color: #0f766e;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.reservaplus-hero .reservaplus-kicker {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.reservaplus-hero h1,
+.reservaplus-toolbar h1,
+.reservaplus-panel h1,
+.reservaplus-panel h2 {
+  color: #1f2937;
+  letter-spacing: 0;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.reservaplus-hero h1 {
+  color: #ffffff;
+  font-size: 2rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.reservaplus-toolbar h1,
+.reservaplus-panel h1 {
+  font-size: 1.45rem;
+}
+
+.reservaplus-panel h2 {
+  font-size: 1.05rem;
+}
+
+.reservaplus-hero p,
+.reservaplus-toolbar p,
+.reservaplus-panel p {
+  color: #667085;
+  margin: 6px 0 0;
+  max-width: 720px;
+}
+
+.reservaplus-hero p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.reservaplus-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.reservaplus-actions .btn,
+.reservaplus-row-actions .btn {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  min-height: 36px;
+}
+
+.reservaplus-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.reservaplus-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.reservaplus-grid-main {
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
+}
+
+.reservaplus-stat {
+  background: #ffffff;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  display: grid;
+  gap: 4px;
+  min-height: 132px;
+  padding: 18px;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.reservaplus-stat:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
+  transform: translateY(-2px);
+}
+
+.reservaplus-stat-icon {
+  align-items: center;
+  border-radius: 8px;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.reservaplus-stat strong {
+  font-size: 2rem;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.reservaplus-stat span {
+  color: #344054;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.reservaplus-stat small {
+  color: #98a2b3;
+  font-size: 0.78rem;
+}
+
+.reservaplus-toolbar,
+.reservaplus-panel {
+  padding: 18px;
+}
+
+.reservaplus-toolbar,
+.reservaplus-panel-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.reservaplus-panel-header {
+  margin-bottom: 16px;
+}
+
+.reservaplus-list {
+  display: grid;
+  gap: 10px;
+}
+
+.reservaplus-list-row,
+.reservaplus-approval-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+  border-left: 3px solid #0f766e;
+  border-radius: 8px;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 12px 14px;
+  transition: background 120ms ease, border-left-color 120ms ease;
+}
+
+.reservaplus-list-row:hover {
+  background: #f0fdfa;
+  border-left-color: #0d9488;
+}
+
+.reservaplus-list-row div,
+.reservaplus-approval-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.reservaplus-list-row strong,
+.reservaplus-approval-row strong {
+  color: #1f2937;
+}
+
+.reservaplus-list-row span,
+.reservaplus-approval-row span {
+  color: #667085;
+}
+
+.reservaplus-badge {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-height: 28px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.reservaplus-badge-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reservaplus-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.reservaplus-badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.reservaplus-empty {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #667085;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-height: 180px;
+  padding: 24px;
+  text-align: center;
+}
+
+.reservaplus-empty i {
+  color: #0f766e;
+  font-size: 2rem;
+}
+
+.reservaplus-empty strong {
+  color: #344054;
+}
+
+.reservaplus-empty-table {
+  min-height: 120px;
+}
+
+.reservaplus-filters {
+  background: #ffffff;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  padding: 14px;
+}
+
+.reservaplus-filters label,
+.reservaplus-form-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.reservaplus-filters span,
+.reservaplus-form-grid span {
+  color: #475467;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.reservaplus-table {
+  margin-bottom: 0;
+}
+
+.reservaplus-table th {
+  color: #475467;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.reservaplus-row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.reservaplus-inline-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.reservaplus-form-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reservaplus-field-wide {
+  grid-column: 1 / -1;
+}
+
+.reservaplus-toggle {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  display: flex !important;
+  gap: 10px !important;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.reservaplus-toggle input {
+  height: 18px;
+  width: 18px;
+}
+
+.reservaplus-calendar-panel {
+  background:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(37, 99, 235, 0.04) 220px),
+    #ffffff;
+  border: 2px solid #b9c8da;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+}
+
+.reservaplus-calendar-panel .reservaplus-panel-header {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 18px;
+}
+
+.reservaplus-calendar {
+  display: grid;
+  gap: 16px;
+  min-height: 720px;
+}
+
+.reservaplus-calendar-title {
+  color: #1f2937;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.reservaplus-calendar-grid {
+  background: #b9c8da;
+  border: 2px solid #b9c8da;
+  border-radius: 10px;
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.reservaplus-calendar-weekday,
+.reservaplus-calendar-day {
+  border-radius: 0;
+  min-height: 44px;
+  padding: 8px;
+}
+
+.reservaplus-calendar-weekday {
+  background: #e7eff7;
+  border: 0;
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: 36px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.reservaplus-calendar-day {
+  background: #fbfdff;
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(30, 64, 175, 0.08);
+  cursor: pointer;
+  display: grid;
+  grid-auto-rows: min-content;
+  gap: 6px;
+  min-height: 128px;
+  outline: 0;
+  position: relative;
+  transition: box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.reservaplus-calendar-day::after {
+  background: #0f766e;
+  border-radius: 999px;
+  color: #ffffff;
+  content: "+";
+  display: grid;
+  font-size: 1rem;
+  font-weight: 800;
+  height: 26px;
+  opacity: 0;
+  place-items: center;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  transform: scale(0.82);
+  transition: opacity 160ms ease, transform 160ms ease;
+  width: 26px;
+}
+
+.reservaplus-calendar-day:hover,
+.reservaplus-calendar-day:focus {
+  background: #ecfdf5;
+  box-shadow: inset 0 0 0 2px #0f766e, 0 14px 28px rgba(15, 118, 110, 0.2);
+  transform: translateY(-3px);
+  z-index: 2;
+}
+
+.reservaplus-calendar-day:hover::after,
+.reservaplus-calendar-day:focus::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.reservaplus-calendar-day.is-muted {
+  background: #eef2f7;
+  color: #98a2b3;
+}
+
+.reservaplus-calendar-day.is-today {
+  background: #fffaf0;
+  box-shadow: inset 0 0 0 3px #e9ab58, 0 10px 22px rgba(233, 171, 88, 0.18);
+  z-index: 1;
+}
+
+.reservaplus-calendar-day-number {
+  color: #344054;
+  font-weight: 800;
+}
+
+.reservaplus-calendar-event {
+  border-radius: 6px;
+  color: #1f2937;
+  cursor: default;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 5px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reservaplus-calendar-event.native {
+  background: #dbeafe;
+  border-left: 3px solid #2563eb;
+}
+
+.reservaplus-calendar-event.request,
+.reservaplus-calendar-event.request.created {
+  background: #dcfce7;
+  border-left: 3px solid #16a34a;
+}
+
+.reservaplus-calendar-event.request.pending {
+  background: #fef3c7;
+  border-left: 3px solid #d97706;
+}
+
+.reservaplus-calendar-event.request.refused {
+  background: #fee2e2;
+  border-left: 3px solid #dc2626;
+  opacity: 0.75;
+  text-decoration: line-through;
+}
+
+.reservaplus-calendar-event.request.cancelled {
+  background: #f1f5f9;
+  border-left: 3px solid #94a3b8;
+  opacity: 0.65;
+}
+
+.reservaplus-calendar-event[data-event-url] {
+  cursor: pointer;
+}
+
+.reservaplus-calendar-event[data-event-url]:hover {
+  filter: brightness(0.94);
+}
+
+.reservaplus-calendar-event.block {
+  background: #fce7f3;
+  border-left: 3px solid #be185d;
+}
+
+.reservaplus-calendar-more {
+  background: #f1f5f9;
+  border-radius: 6px;
+  color: #475467;
+  cursor: default;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+}
+
+.reservaplus-calendar-more:hover {
+  background: #e2e8f0;
+}
+
+.reservaplus-calendar.is-loading .reservaplus-calendar-title {
+  animation: reservaplus-pulse 1.2s ease-in-out infinite;
+}
+
+.reservaplus-calendar-skeleton {
+  animation: reservaplus-pulse 1.2s ease-in-out infinite;
+  background: #eef2f7 !important;
+  cursor: default !important;
+}
+
+.reservaplus-calendar-skeleton:hover,
+.reservaplus-calendar-skeleton:focus {
+  background: #eef2f7 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.reservaplus-calendar-skeleton::after {
+  display: none !important;
+}
+
+@keyframes reservaplus-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+.reservaplus-calendar-legend {
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
+.reservaplus-calendar-legend-item {
+  align-items: center;
+  color: #475467;
+  display: flex;
+  font-size: 0.78rem;
+  gap: 6px;
+}
+
+.reservaplus-calendar-legend-dot {
+  border-radius: 4px;
+  flex-shrink: 0;
+  height: 12px;
+  width: 20px;
+}
+
+.reservaplus-modal[hidden] {
+  display: none;
+}
+
+.reservaplus-modal {
+  inset: 0;
+  position: fixed;
+  z-index: 1050;
+}
+
+.reservaplus-modal-backdrop {
+  background: rgba(15, 23, 42, 0.45);
+  inset: 0;
+  position: absolute;
+}
+
+.reservaplus-modal-dialog {
+  background: #ffffff;
+  border: 1px solid #c8d3e3;
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  left: 50%;
+  max-height: calc(100vh - 48px);
+  max-width: 720px;
+  overflow: auto;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(720px, calc(100vw - 32px));
+}
+
+.reservaplus-modal-header,
+.reservaplus-modal-footer {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 18px;
+}
+
+.reservaplus-modal-header {
+  background: #f8fbfd;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.reservaplus-modal-header h2 {
+  color: #1f2937;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.reservaplus-modal-header p {
+  color: #667085;
+  margin: 4px 0 0;
+}
+
+.reservaplus-modal-body {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 18px;
+}
+
+.reservaplus-modal-body label {
+  display: grid;
+  gap: 6px;
+}
+
+.reservaplus-modal-body label span {
+  color: #475467;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.reservaplus-modal-footer {
+  border-top: 1px solid #e2e8f0;
+  justify-content: flex-end;
+}
+
+.reservaplus-modal-open {
+  overflow: hidden;
+}
+
+/* Day detail panel */
+
+.reservaplus-daydetail[hidden] {
+  display: none;
+}
+
+.reservaplus-daydetail {
+  inset: 0;
+  position: fixed;
+  z-index: 1060;
+}
+
+.reservaplus-daydetail-dialog {
+  background: #ffffff;
+  border: 1px solid #c8d3e3;
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.3);
+  display: flex;
+  flex-direction: column;
+  left: 50%;
+  max-height: calc(100vh - 48px);
+  max-width: 560px;
+  overflow: hidden;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+}
+
+.reservaplus-daydetail-body {
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.reservaplus-daydetail-event {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+  border-left: 4px solid #0f766e;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 62px;
+  padding: 10px 14px;
+}
+
+.reservaplus-daydetail-event.native {
+  border-left-color: #2563eb;
+  background: #f0f5ff;
+}
+
+.reservaplus-daydetail-event.request,
+.reservaplus-daydetail-event.request.created {
+  border-left-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.reservaplus-daydetail-event.request.pending {
+  background: #fffbeb;
+  border-left-color: #d97706;
+}
+
+.reservaplus-daydetail-event.request.refused {
+  background: #fef2f2;
+  border-left-color: #dc2626;
+  opacity: 0.8;
+}
+
+.reservaplus-daydetail-event.request.cancelled {
+  background: #f8fafc;
+  border-left-color: #94a3b8;
+  opacity: 0.7;
+}
+
+.reservaplus-daydetail-event.block {
+  background: #fdf2f8;
+  border-left-color: #be185d;
+}
+
+.reservaplus-daydetail-event-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.reservaplus-daydetail-event-info strong {
+  color: #1f2937;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reservaplus-daydetail-event-time {
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.reservaplus-daydetail-empty {
+  color: #667085;
+  padding: 24px;
+  text-align: center;
+}
+
+.reservaplus-reservation-form {
+  align-items: end;
+  grid-template-columns: minmax(260px, 1.15fr) minmax(210px, 0.85fr) minmax(210px, 0.85fr);
+  max-width: 1060px;
+}
+
+.reservaplus-reservation-form .reservaplus-field-wide {
+  grid-column: 1 / -1;
+  max-width: 720px;
+}
+
+.reservaplus-for-others {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.reservaplus-for-others span {
+  align-items: center;
+  display: flex;
+}
+
+.reservaplus-form-panel .reservaplus-actions {
+  justify-content: flex-start;
+}
+
+@media (max-width: 1180px) {
+  .reservaplus-stats,
+  .reservaplus-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reservaplus-reservation-form,
+  .reservaplus-grid-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .reservaplus-hero,
+  .reservaplus-toolbar,
+  .reservaplus-panel-header,
+  .reservaplus-list-row,
+  .reservaplus-approval-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reservaplus-actions {
+    justify-content: flex-start;
+  }
+
+  .reservaplus-stats,
+  .reservaplus-filters,
+  .reservaplus-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservaplus-shell {
+    padding: 12px;
+  }
+
+  .reservaplus-calendar-grid {
+    gap: 4px;
+  }
+
+  .reservaplus-calendar-day {
+    min-height: 86px;
+    padding: 6px;
+  }
+
+  .reservaplus-modal-body {
+    grid-template-columns: 1fr;
+  }
+}

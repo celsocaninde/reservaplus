@@ -1,0 +1,38 @@
+<root>
+  <name>Reserva Plus</name>
+  <key>reservaplus</key>
+  <state>alpha</state>
+  <description>
+    <short>
+      <pt_BR>Fluxo moderno de reservas para o GLPI.</pt_BR>
+      <lang>pt_BR</lang>
+    </short>
+    <long>
+      <pt_BR>O Reserva Plus adiciona painel moderno, fluxo de aprovação, regras, bloqueios, calendário, notificações e relatórios para reservas do GLPI sem alterar arquivos do core.</pt_BR>
+      <lang>pt_BR</lang>
+    </long>
+  </description>
+  <homepage>https://glpi-project.org</homepage>
+  <authors>
+    <author>Celso</author>
+    <author>Codex</author>
+  </authors>
+  <versions>
+    <version>
+      <num>0.1.0</num>
+      <compatibility>~11.0.0</compatibility>
+    </version>
+  </versions>
+  <langs>
+    <lang>pt_BR</lang>
+    <lang>en_GB</lang>
+  </langs>
+  <license>GPL-3.0-or-later</license>
+  <tags>
+    <pt_BR>
+      <tag>reserva</tag>
+      <tag>calendário</tag>
+      <tag>aprovação</tag>
+    </pt_BR>
+  </tags>
+</root>
