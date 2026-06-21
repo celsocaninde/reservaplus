@@ -236,51 +236,67 @@ class Profile extends CoreProfile
         $profileId = (int) $item->getID();
         $currentRights = static::getCurrentRightsForProfile($profileId);
         $canEdit = Session::haveRight('profile', UPDATE) > 0;
+        $shortLabels = [
+            READ   => __('Ler', 'reservaplus'),
+            CREATE => __('Criar', 'reservaplus'),
+            UPDATE => __('Atualizar', 'reservaplus'),
+            PURGE  => __('Excluir', 'reservaplus'),
+        ];
 
-        echo "<div class='card card-body'>";
-        echo '<h3>' . __('Permissões do Reserva Plus', 'reservaplus') . '</h3>';
-        echo "<form method='post' action='" . $CFG_GLPI['root_doc'] . "/plugins/reservaplus/front/profile.rights.php'>";
+        Dashboard::includeAssets(false);
+
+        echo "<div class='reservaplus-shell reservaplus-perms'>";
+        echo "<form method='post' action='" . $CFG_GLPI['root_doc'] . "/plugins/reservaplus/front/profile.rights.php' class='reservaplus-panel'>";
         echo Html::hidden('profiles_id', ['value' => $profileId]);
-        echo "<table class='tab_cadre_fixehov'>";
-        echo '<tr>';
-        echo '<th>' . __('Permissão', 'reservaplus') . '</th>';
-        foreach (static::getPermissionColumns() as $label) {
-            echo '<th>' . Html::cleanInputText($label) . '</th>';
-        }
-        echo '</tr>';
 
+        // Cabeçalho com identidade
+        echo "<div class='reservaplus-perms-head'>";
+        echo "<span class='reservaplus-perms-icon'><i class='ti ti-calendar-bolt'></i></span>";
+        echo '<div>';
+        echo "<span class='reservaplus-kicker'>" . __('Reserva Plus', 'reservaplus') . '</span>';
+        echo '<h2>' . __('Permissões', 'reservaplus') . '</h2>';
+        echo '<p>' . __('Defina o que este perfil pode fazer no Reserva Plus.', 'reservaplus') . '</p>';
+        echo '</div>';
+        echo '</div>';
+
+        echo "<div class='reservaplus-perms-list'>";
         foreach (static::getAllRights() as $right) {
             $field = (string) $right['field'];
-            $mask = (int) ($currentRights[$field] ?? 0);
+            $mask  = (int) ($currentRights[$field] ?? 0);
+            $meta  = static::getRightMeta($field);
 
-            echo '<tr>';
-            echo '<td>';
+            echo "<div class='reservaplus-perm-row'>";
+            echo "<span class='reservaplus-perm-ico'><i class='" . Html::cleanInputText($meta['icon']) . "'></i></span>";
+            echo "<div class='reservaplus-perm-info'>";
             echo '<strong>' . Html::cleanInputText((string) $right['label']) . '</strong>';
-            echo '<br><span class="text-muted"><code>' . Html::cleanInputText($field) . '</code></span>';
-            echo '</td>';
-
-            foreach (static::getPermissionColumns() as $permission => $label) {
-                echo "<td class='text-center'>";
-                if (in_array((int) $permission, $right['rights'], true)) {
-                    $checked = ($mask & (int) $permission) === (int) $permission;
-                    echo '<input type="checkbox" name="plugin_reservaplus_rights[' . Html::cleanInputText($field) . '][]" value="' . (int) $permission . '"'
-                        . ($checked ? ' checked' : '')
-                        . ($canEdit ? '' : ' disabled')
-                        . '>';
-                } else {
-                    echo '-';
-                }
-                echo '</td>';
+            if ($meta['desc'] !== '') {
+                echo '<span>' . Html::cleanInputText($meta['desc']) . '</span>';
             }
+            echo '<code>' . Html::cleanInputText($field) . '</code>';
+            echo '</div>';
 
-            echo '</tr>';
+            echo "<div class='reservaplus-perm-actions'>";
+            foreach ($shortLabels as $permission => $label) {
+                if (!in_array((int) $permission, $right['rights'], true)) {
+                    continue;
+                }
+                $checked = ($mask & (int) $permission) === (int) $permission;
+                echo "<label class='reservaplus-perm-toggle'>";
+                echo '<input type="checkbox" name="plugin_reservaplus_rights[' . Html::cleanInputText($field) . '][]" value="' . (int) $permission . '"'
+                    . ($checked ? ' checked' : '')
+                    . ($canEdit ? '' : ' disabled')
+                    . '>';
+                echo '<span>' . Html::cleanInputText($label) . '</span>';
+                echo '</label>';
+            }
+            echo '</div>';
+            echo '</div>';
         }
-
-        echo '</table>';
+        echo '</div>';
 
         if ($canEdit) {
-            echo "<div class='mt-3'>";
-            echo Html::submit(__('Salvar', 'reservaplus'), ['name' => 'save_reservaplus_rights', 'class' => 'btn btn-primary']);
+            echo "<div class='reservaplus-perms-foot'>";
+            echo Html::submit(__('Salvar permissões', 'reservaplus'), ['name' => 'save_reservaplus_rights', 'class' => 'btn btn-primary']);
             echo '</div>';
         }
 
@@ -288,6 +304,41 @@ class Profile extends CoreProfile
         echo '</div>';
 
         return true;
+    }
+
+    /**
+     * Ícone + descrição amigável para cada permissão.
+     */
+    private static function getRightMeta(string $field): array
+    {
+        $map = [
+            ReservationRequest::$rightname => [
+                'icon' => 'ti ti-calendar-check',
+                'desc' => __('Criar, ver e gerenciar reservas de itens.', 'reservaplus'),
+            ],
+            Approval::$rightname => [
+                'icon' => 'ti ti-thumb-up',
+                'desc' => __('Aprovar ou recusar solicitações pendentes.', 'reservaplus'),
+            ],
+            Rule::$rightname => [
+                'icon' => 'ti ti-adjustments',
+                'desc' => __('Definir regras de aprovação, duração e antecedência.', 'reservaplus'),
+            ],
+            Block::$rightname => [
+                'icon' => 'ti ti-calendar-x',
+                'desc' => __('Bloquear horários por item ou globais.', 'reservaplus'),
+            ],
+            Report::$rightname => [
+                'icon' => 'ti ti-chart-bar',
+                'desc' => __('Visualizar relatórios e métricas de uso.', 'reservaplus'),
+            ],
+            Config::$rightname => [
+                'icon' => 'ti ti-settings',
+                'desc' => __('Ajustar as configurações gerais do plugin.', 'reservaplus'),
+            ],
+        ];
+
+        return $map[$field] ?? ['icon' => 'ti ti-shield-lock', 'desc' => ''];
     }
 
     public static function hasAnyRight(): bool
@@ -301,16 +352,6 @@ class Profile extends CoreProfile
         }
 
         return false;
-    }
-
-    private static function getPermissionColumns(): array
-    {
-        return [
-            READ   => __('Ler', 'reservaplus'),
-            CREATE => __('Criar', 'reservaplus'),
-            UPDATE => __('Atualizar', 'reservaplus'),
-            PURGE  => __('Excluir definitivamente', 'reservaplus'),
-        ];
     }
 
     private static function shouldUpdateDefaultRights(string $profileName, int $currentRights, int $defaultRights): bool

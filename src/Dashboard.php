@@ -88,6 +88,14 @@ class Dashboard extends CommonGLPI
             ];
         }
 
+        if (ReservationRequest::isGlpiAdmin() || ReservationRequest::canManageAllRequests()) {
+            $menu['options']['reservaplus_itemgroups'] = [
+                'title' => __('Grupos por sala', 'reservaplus'),
+                'page'  => self::getUrl('itemgroup.php'),
+                'icon'  => 'ti ti-users-group',
+            ];
+        }
+
         if (Config::canView()) {
             $menu['options']['reservaplus_config'] = [
                 'title' => __('Configuração', 'reservaplus'),
@@ -104,31 +112,89 @@ class Dashboard extends CommonGLPI
         return '/plugins/reservaplus/front/' . ltrim($frontFile, '/');
     }
 
+    /**
+     * Indica se o usuário atual está na interface simplificada (self-service).
+     */
+    public static function isHelpdeskInterface(): bool
+    {
+        return Session::getCurrentInterface() === 'helpdesk';
+    }
+
+    /**
+     * Cabeçalho ciente da interface: usa helpHeader na interface simplificada
+     * (self-service) e o header central nos demais perfis. Sem isto, abrir uma
+     * página do plugin como self-service renderiza o layout central e quebra a
+     * navegação simplificada.
+     */
+    public static function renderHeader(string $title): void
+    {
+        if (self::isHelpdeskInterface()) {
+            // 'reservaplus' é o item de topo injetado via redefine_menus.
+            Html::helpHeader($title, 'reservaplus');
+            return;
+        }
+
+        Html::header($title, $_SERVER['PHP_SELF'] ?? '', 'tools', self::class);
+    }
+
+    public static function renderFooter(): void
+    {
+        if (self::isHelpdeskInterface()) {
+            Html::helpFooter();
+            return;
+        }
+
+        Html::footer();
+    }
+
+    /**
+     * Versão do asset para cache-busting. Usa o filemtime do arquivo para que
+     * qualquer alteração em CSS/JS recarregue automaticamente, sem precisar
+     * subir a versão do plugin (que o coloca em estado "precisa atualizar").
+     */
+    private static function assetVersion(string $relativePath): string
+    {
+        $fullPath = dirname(__DIR__) . '/public/' . ltrim($relativePath, '/');
+        $mtime = is_file($fullPath) ? (int) filemtime($fullPath) : 0;
+
+        return $mtime > 0 ? (string) $mtime : PLUGIN_RESERVAPLUS_VERSION;
+    }
+
     public static function includeAssets(bool $includeScript = true): void
     {
         static $cssIncluded = false;
         static $scriptIncluded = false;
 
         if (!$cssIncluded) {
-            echo Html::css('/plugins/reservaplus/css/reservaplus.css', ['version' => PLUGIN_RESERVAPLUS_VERSION], false);
+            echo Html::css('/plugins/reservaplus/css/reservaplus.css', ['version' => self::assetVersion('css/reservaplus.css')], false);
             $cssIncluded = true;
         }
 
         if ($includeScript && !$scriptIncluded) {
-            echo Html::script('/plugins/reservaplus/js/reservaplus.js', ['version' => PLUGIN_RESERVAPLUS_VERSION], false);
+            echo Html::script('/plugins/reservaplus/js/reservaplus.js', ['version' => self::assetVersion('js/reservaplus.js')], false);
             $scriptIncluded = true;
         }
     }
 
     public static function showDashboard(): void
     {
-        $stats             = self::getStats();
-        $recentRequests    = ReservationRequest::getFiltered([], 6);
+        $stats = self::getStats();
+
+        // Quem não administra reservas só enxerga as próprias na lista de
+        // "recentes" (que exibe nomes de usuários). Evita vazar reservas de
+        // terceiros para perfis self-service que cheguem a esta página.
+        $recentWhere = [];
+        if (!ReservationRequest::isGlpiAdmin() && !ReservationRequest::canManageAllRequests()) {
+            $recentWhere[ReservationRequest::getTable() . '.users_id_requester'] = (int) Session::getLoginUserID();
+        }
+
+        $recentRequests    = ReservationRequest::getFiltered($recentWhere, 6);
         $todayReservations = ReservationRequest::getTodayNativeReservations(6);
 
         echo "<div class='reservaplus-shell'>";
         self::showHero();
         self::showStats($stats);
+        self::showAvailableNow();
 
         echo "<div class='reservaplus-grid reservaplus-grid-main'>";
         echo "<section class='reservaplus-panel'>";
@@ -159,10 +225,13 @@ class Dashboard extends CommonGLPI
     private static function showHero(): void
     {
         echo "<div class='reservaplus-hero'>";
-        echo '<div>';
+        echo "<div class='reservaplus-hero-content'>";
+        echo "<span class='reservaplus-brand-mark'><i class='ti ti-calendar-bolt'></i></span>";
+        echo "<div class='reservaplus-brand-text'>";
         echo '<span class="reservaplus-kicker">' . __('Reserva Plus', 'reservaplus') . '</span>';
         echo '<h1>' . __('Central de reservas', 'reservaplus') . '</h1>';
         echo '<p>' . __('Reserve itens disponíveis, visualize no calendário e acompanhe suas reservas.', 'reservaplus') . '</p>';
+        echo '</div>';
         echo '</div>';
         echo "<div class='reservaplus-actions'>";
         if (ReservationRequest::canCreate()) {
@@ -176,18 +245,55 @@ class Dashboard extends CommonGLPI
     private static function showStats(array $stats): void
     {
         echo "<div class='reservaplus-grid reservaplus-stats'>";
-        self::showStatCard(__('Hoje', 'reservaplus'), (string) $stats['today'], __('Reservas ativas agora', 'reservaplus'), 'ti ti-calendar-check', '#2563eb', '#dbeafe');
-        self::showStatCard(__('Minhas', 'reservaplus'), (string) $stats['mine'], __('Minhas reservas ativas', 'reservaplus'), 'ti ti-user-check', '#0f766e', '#e6f4f1');
-        self::showStatCard(__('Bloqueios', 'reservaplus'), (string) $stats['blocks'], __('Bloqueios de horário ativos', 'reservaplus'), 'ti ti-calendar-x', '#be185d', '#fce7f3');
-        self::showStatCard(__('Este mês', 'reservaplus'), (string) $stats['month'], __('Reservas registradas no mês', 'reservaplus'), 'ti ti-chart-bar', '#7c3aed', '#ede9fe');
+        self::showStatCard(__('Hoje', 'reservaplus'), (string) $stats['today'], __('Reservas ativas agora', 'reservaplus'), 'ti ti-calendar-check', 'primary');
+        self::showStatCard(__('Minhas', 'reservaplus'), (string) $stats['mine'], __('Minhas reservas ativas', 'reservaplus'), 'ti ti-user-check', 'accent');
+        self::showStatCard(__('Bloqueios', 'reservaplus'), (string) $stats['blocks'], __('Bloqueios de horário ativos', 'reservaplus'), 'ti ti-calendar-x', 'rose');
+        self::showStatCard(__('Este mês', 'reservaplus'), (string) $stats['month'], __('Reservas registradas no mês', 'reservaplus'), 'ti ti-chart-bar', 'violet');
         echo '</div>';
     }
 
-    private static function showStatCard(string $title, string $value, string $subtitle, string $icon, string $color = '#0f766e', string $bg = '#e6f4f1'): void
+    private static function showAvailableNow(): void
     {
-        echo "<div class='reservaplus-stat' style='border-top:3px solid " . Html::cleanInputText($color) . "'>";
-        echo "<span class='reservaplus-stat-icon' style='background:" . Html::cleanInputText($bg) . ";color:" . Html::cleanInputText($color) . "'><i class='" . Html::cleanInputText($icon) . "'></i></span>";
-        echo '<strong style="color:' . Html::cleanInputText($color) . '">' . Html::cleanInputText($value) . '</strong>';
+        $items = (new AvailabilityService())->availableNow(60);
+
+        echo "<section class='reservaplus-panel reservaplus-available-now'>";
+        echo "<div class='reservaplus-panel-header'>";
+        echo '<div>';
+        echo '<h2><i class="ti ti-bolt"></i> ' . __('Disponível agora', 'reservaplus') . '</h2>';
+        echo '<p>' . __('Itens livres para reservar na próxima hora.', 'reservaplus') . '</p>';
+        echo '</div>';
+        echo "<a class='btn btn-outline-primary' href='" . self::getUrl('reservation.form.php') . "'><i class='ti ti-plus'></i> " . __('Nova reserva', 'reservaplus') . '</a>';
+        echo '</div>';
+
+        if ($items === []) {
+            self::showEmptyState(__('Nada livre agora.', 'reservaplus'), __('Todos os itens estão reservados ou bloqueados na próxima hora.', 'reservaplus'));
+            echo '</section>';
+            return;
+        }
+
+        $canCreate = ReservationRequest::canCreate();
+        echo "<div class='reservaplus-available-grid'>";
+        foreach ($items as $it) {
+            echo "<div class='reservaplus-available-card'>";
+            echo "<span class='reservaplus-available-badge'><i class='ti ti-circle-check'></i> " . __('Livre', 'reservaplus') . '</span>';
+            echo '<strong>' . Html::cleanInputText((string) $it['label']) . '</strong>';
+            echo '<small>' . Html::cleanInputText((string) $it['typelabel']) . '</small>';
+            if ($canCreate) {
+                $url = self::getUrl('reservation.form.php') . '?item=' . (int) $it['reservationitems_id'];
+                echo "<a class='btn btn-sm btn-primary' href='" . $url . "'><i class='ti ti-plus'></i> " . __('Reservar', 'reservaplus') . '</a>';
+            }
+            echo '</div>';
+        }
+        echo '</div>';
+        echo '</section>';
+    }
+
+    private static function showStatCard(string $title, string $value, string $subtitle, string $icon, string $variant = 'primary'): void
+    {
+        $variant = preg_replace('/[^a-z]/', '', $variant) ?: 'primary';
+        echo "<div class='reservaplus-stat reservaplus-stat--" . $variant . "'>";
+        echo "<span class='reservaplus-stat-icon'><i class='" . Html::cleanInputText($icon) . "'></i></span>";
+        echo '<strong>' . Html::cleanInputText($value) . '</strong>';
         echo '<span>' . Html::cleanInputText($title) . '</span>';
         echo '<small>' . Html::cleanInputText($subtitle) . '</small>';
         echo '</div>';
@@ -253,7 +359,7 @@ class Dashboard extends CommonGLPI
             echo '<div>';
             echo '<strong>' . Html::cleanInputText($itemName) . '</strong>';
             echo '<span>' . Html::cleanInputText($beginFmt . ($endFmt !== '' ? ' – ' . $endFmt : '')) . '</span>';
-            echo '<small style="color:#98a2b3">' . Html::cleanInputText(ReservationRequest::getUserDisplayName($row)) . '</small>';
+            echo '<small>' . Html::cleanInputText(ReservationRequest::getUserDisplayName($row)) . '</small>';
             echo '</div>';
             echo "<span class='reservaplus-badge reservaplus-badge-approved'>" . __('Ativa', 'reservaplus') . '</span>';
             echo '</div>';

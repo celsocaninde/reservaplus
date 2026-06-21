@@ -9,12 +9,78 @@ include('../../../inc/includes.php');
 
 Session::checkRight(ReservationRequest::$rightname, READ);
 
+/** Nome amigável de quem vai usar o horário (com cache por usuário). */
+function plugin_reservaplus_user_name(int $userId): string
+{
+    static $cache = [];
+    if ($userId <= 0) {
+        return __('Reservado', 'reservaplus');
+    }
+    if (!array_key_exists($userId, $cache)) {
+        $user           = new User();
+        $cache[$userId] = $user->getFromDB($userId) ? trim((string) $user->getFriendlyName()) : '';
+    }
+    return $cache[$userId] !== '' ? $cache[$userId] : __('Reservado', 'reservaplus');
+}
+
 function plugin_reservaplus_calendar_events(string $start, string $end): array
 {
     global $DB;
 
-    $events = [];
+    $events          = [];
+    $linkedNativeIds = [];
 
+    // Visibilidade: o calendário mostra quem vai usar cada horário. Reservas de
+    // terceiros aparecem com o nome de quem reservou, mas somente-leitura (sem
+    // item nem ação) — só o dono/admin pode cancelar/excluir.
+    $isAdmin = ReservationRequest::isGlpiAdmin() || ReservationRequest::canManageAllRequests();
+    $uid     = (int) Session::getLoginUserID();
+
+    // Requests ativos primeiro (deduplicação igual ao ajax/events.php)
+    if ($DB->tableExists(ReservationRequest::getTable())) {
+        foreach ($DB->request([
+            'FROM'  => ReservationRequest::getTable(),
+            'WHERE' => [
+                'end'    => ['>', $start],
+                'begin'  => ['<', $end],
+                'status' => [
+                    ReservationRequest::STATUS_CREATED,
+                    ReservationRequest::STATUS_PENDING,
+                    ReservationRequest::STATUS_APPROVED,
+                ],
+            ],
+            'LIMIT' => 500,
+        ]) as $row) {
+            $decoded = json_decode((string) ($row['native_reservations_json'] ?? ''), true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $nativeId) {
+                    $nativeId = (int) $nativeId;
+                    if ($nativeId > 0) {
+                        $linkedNativeIds[$nativeId] = true;
+                    }
+                }
+            }
+            $forId       = (int) ($row['users_id_for'] ?? 0);
+            $requesterId = (int) ($row['users_id_requester'] ?? 0);
+            $owns        = $uid === $requesterId || $uid === $forId;
+            if (!$isAdmin && !$owns) {
+                $events[] = [
+                    'title'    => plugin_reservaplus_user_name($forId > 0 ? $forId : $requesterId),
+                    'start'    => (string) ($row['begin'] ?? ''),
+                    'type'     => 'native',
+                    'readonly' => true,
+                ];
+                continue;
+            }
+            $events[] = [
+                'title' => ReservationRequest::getStatusLabel((string) ($row['status'] ?? ReservationRequest::STATUS_PENDING)) . ' #' . (int) ($row['reservationitems_id'] ?? 0),
+                'start' => (string) ($row['begin'] ?? ''),
+                'type'  => 'request',
+            ];
+        }
+    }
+
+    // Nativas não vinculadas a requests (criadas direto no GLPI)
     if ($DB->tableExists('glpi_reservations')) {
         foreach ($DB->request([
             'FROM'  => 'glpi_reservations',
@@ -24,27 +90,22 @@ function plugin_reservaplus_calendar_events(string $start, string $end): array
             ],
             'LIMIT' => 500,
         ]) as $row) {
+            if (isset($linkedNativeIds[(int) ($row['id'] ?? 0)])) {
+                continue;
+            }
+            if (!$isAdmin && (int) ($row['users_id'] ?? 0) !== $uid) {
+                $events[] = [
+                    'title'    => plugin_reservaplus_user_name((int) ($row['users_id'] ?? 0)),
+                    'start'    => (string) ($row['begin'] ?? ''),
+                    'type'     => 'native',
+                    'readonly' => true,
+                ];
+                continue;
+            }
             $events[] = [
                 'title' => __('Reserva confirmada', 'reservaplus') . ' #' . (int) ($row['reservationitems_id'] ?? 0),
                 'start' => (string) ($row['begin'] ?? ''),
                 'type'  => 'native',
-            ];
-        }
-    }
-
-    if ($DB->tableExists(ReservationRequest::getTable())) {
-        foreach ($DB->request([
-            'FROM'  => ReservationRequest::getTable(),
-            'WHERE' => [
-                'end'   => ['>', $start],
-                'begin' => ['<', $end],
-            ],
-            'LIMIT' => 500,
-        ]) as $row) {
-            $events[] = [
-                'title' => ReservationRequest::getStatusLabel((string) ($row['status'] ?? ReservationRequest::STATUS_PENDING)) . ' #' . (int) ($row['reservationitems_id'] ?? 0),
-                'start' => (string) ($row['begin'] ?? ''),
-                'type'  => 'request',
             ];
         }
     }
@@ -211,7 +272,7 @@ $isAdmin          = ReservationRequest::isGlpiAdmin() || ReservationRequest::can
 $canCreate        = ReservationRequest::canCreate();
 $deleteActionUrl  = Dashboard::getUrl('reservation.action.php');
 
-Html::header(__('Calendário do Reserva Plus', 'reservaplus'), $_SERVER['PHP_SELF'], 'tools', Dashboard::class);
+Dashboard::renderHeader(__('Calendário do Reserva Plus', 'reservaplus'));
 Dashboard::includeAssets();
 
 echo "<div class='reservaplus-shell'>";
@@ -222,6 +283,11 @@ echo '<h1>' . __('Calendário', 'reservaplus') . '</h1>';
 echo '<p>' . __('Visualize e gerencie reservas. Clique em um dia para reservar rapidamente.', 'reservaplus') . '</p>';
 echo '</div>';
 echo "<div class='reservaplus-actions'>";
+echo "<div class='reservaplus-view-switcher'>";
+echo "<button type='button' class='btn btn-sm btn-secondary' data-reservaplus-view='month'>" . __('Mês', 'reservaplus') . '</button>';
+echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-view='week'>" . __('Semana', 'reservaplus') . '</button>';
+echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-view='day'>" . __('Dia', 'reservaplus') . '</button>';
+echo '</div>';
 echo "<button type='button' class='btn btn-outline-secondary reservaplus-calendar-prev'><i class='ti ti-chevron-left'></i></button>";
 echo "<button type='button' class='btn btn-outline-secondary reservaplus-calendar-today'>" . __('Hoje', 'reservaplus') . '</button>';
 echo "<button type='button' class='btn btn-outline-secondary reservaplus-calendar-next'><i class='ti ti-chevron-right'></i></button>";
@@ -234,16 +300,17 @@ echo "<div class='reservaplus-calendar' data-events-url='/plugins/reservaplus/aj
 plugin_reservaplus_render_month($month, $events);
 echo '</div>';
 echo "<div class='reservaplus-calendar-legend'>";
-echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot' style='background:#dbeafe;border-left:3px solid #2563eb'></span>" . __('Reserva confirmada (GLPI)', 'reservaplus') . '</div>';
-echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot' style='background:#dcfce7;border-left:3px solid #16a34a'></span>" . __('Reserva ativa', 'reservaplus') . '</div>';
-echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot' style='background:#fce7f3;border-left:3px solid #be185d'></span>" . __('Bloqueio de horário', 'reservaplus') . '</div>';
+echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-native'></span>" . __('Reserva confirmada (GLPI)', 'reservaplus') . '</div>';
+echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-active'></span>" . __('Reserva ativa', 'reservaplus') . '</div>';
+echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-pending'></span>" . __('Aguardando aprovação', 'reservaplus') . '</div>';
+echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-block'></span>" . __('Bloqueio de horário', 'reservaplus') . '</div>';
 echo '</div>';
 echo '</section>';
 if (ReservationRequest::canCreate()) {
     echo "<div class='reservaplus-modal' data-reservaplus-modal hidden>";
     echo "<div class='reservaplus-modal-backdrop' data-reservaplus-modal-close></div>";
     echo "<div class='reservaplus-modal-dialog' role='dialog' aria-modal='true' aria-labelledby='reservaplus-modal-title'>";
-    echo "<form method='post' action='" . Dashboard::getUrl('reservation.form.php') . "'>";
+    echo "<form method='post' action='" . Dashboard::getUrl('reservation.form.php') . "' data-reservaplus-availability-form data-availability-url='/plugins/reservaplus/ajax/availability.php'>";
     echo "<div class='reservaplus-modal-header'>";
     echo '<div>';
     echo "<span class='reservaplus-kicker'>" . __('Reserva rápida', 'reservaplus') . '</span>';
@@ -254,9 +321,12 @@ if (ReservationRequest::canCreate()) {
     echo '</div>';
     echo "<div class='reservaplus-modal-body'>";
 
-    // Item reservável
-    echo '<label><span>' . __('Item reservável', 'reservaplus') . "</span><select name='reservationitems_id' class='form-select' required>";
-    echo '<option value="">' . __('Selecione um item', 'reservaplus') . '</option>';
+    // Itens reserváveis (um ou vários — reserva em massa)
+    echo "<div class='reservaplus-field-wide reservaplus-item-tools' data-reservaplus-item-tools>";
+    echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-select-all>" . __('Todos', 'reservaplus') . '</button>';
+    echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-clear-sel>" . __('Limpar', 'reservaplus') . '</button>';
+    echo '</div>';
+    echo '<label class="reservaplus-field-wide"><span>' . __('Itens reserváveis', 'reservaplus') . ' <small class="text-muted">' . __('(um ou vários)', 'reservaplus') . "</small></span><select name='reservationitems_id[]' class='form-select' multiple size='6' required>";
     foreach ($reservableItems as $item) {
         echo "<option value='" . (int) ($item['id'] ?? 0) . "'>" . Html::cleanInputText((string) ($item['_label'] ?? '#' . (int) ($item['id'] ?? 0))) . '</option>';
     }
@@ -266,10 +336,13 @@ if (ReservationRequest::canCreate()) {
     echo '<label><span>' . __('Início', 'reservaplus') . "</span><input class='form-control' type='datetime-local' name='begin' data-reservaplus-begin required></label>";
     echo '<label><span>' . __('Fim', 'reservaplus') . "</span><input class='form-control' type='datetime-local' name='end' data-reservaplus-end required></label>";
 
+    // Indicador de disponibilidade em tempo real
+    echo "<div class='reservaplus-availability reservaplus-field-wide' data-reservaplus-availability hidden></div>";
+
     // Reservar para (somente admin/gestor)
     if ($canForOthers && $calendarUsers !== []) {
         echo "<label class='reservaplus-field-wide reservaplus-for-others'>";
-        echo "<span><i class='ti ti-user-share' style='color:#0f766e;margin-right:4px'></i>" . __('Reservar para', 'reservaplus') . '</span>';
+        echo "<span><i class='ti ti-user-share reservaplus-ico-accent'></i>" . __('Reservar para', 'reservaplus') . '</span>';
         echo "<select name='users_id_for' class='form-select'>";
         echo "<option value='" . (int) Session::getLoginUserID() . "'>" . __('Eu mesmo', 'reservaplus') . '</option>';
         foreach ($calendarUsers as $user) {
@@ -323,4 +396,4 @@ $jsConfig = json_encode([
 echo Html::scriptBlock('window.reservaplusConfig = ' . $jsConfig . ';');
 echo '</div>';
 
-Html::footer();
+Dashboard::renderFooter();

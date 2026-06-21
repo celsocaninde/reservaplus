@@ -8,6 +8,7 @@ function plugin_reservaplus_run_uninstall(): bool
 
     $tables = [
         'glpi_plugin_reservaplus_notification_logs',
+        'glpi_plugin_reservaplus_item_groups',
         'glpi_plugin_reservaplus_blocks',
         'glpi_plugin_reservaplus_rules',
         'glpi_plugin_reservaplus_approvals',

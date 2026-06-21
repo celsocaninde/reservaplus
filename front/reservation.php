@@ -9,7 +9,7 @@ include('../../../inc/includes.php');
 
 Session::checkRight(ReservationRequest::$rightname, READ);
 
-Html::header(__('Reservas do Reserva Plus', 'reservaplus'), $_SERVER['PHP_SELF'], 'tools', Dashboard::class);
+Dashboard::renderHeader(__('Reservas do Reserva Plus', 'reservaplus'));
 Dashboard::includeAssets();
 ReservationRequest::showList();
-Html::footer();
+Dashboard::renderFooter();

@@ -12,7 +12,7 @@ if (!Dashboard::canView()) {
     Html::displayRightError();
 }
 
-Html::header(__('Reserva Plus', 'reservaplus'), $_SERVER['PHP_SELF'], 'tools', Dashboard::class);
+Dashboard::renderHeader(__('Reserva Plus', 'reservaplus'));
 Dashboard::includeAssets();
 Dashboard::showDashboard();
-Html::footer();
+Dashboard::renderFooter();

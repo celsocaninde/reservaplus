@@ -59,8 +59,7 @@ function plugin_reservaplus_block_datetime(string $value): string
 }
 
 if (isset($_POST['add'])) {
-    Session::checkCSRF($_POST);
-
+    // CSRF já validado/consumido pelo kernel do GLPI 11 (CheckCsrfListener).
     $begin = plugin_reservaplus_block_datetime((string) ($_POST['begin'] ?? ''));
     $end   = plugin_reservaplus_block_datetime((string) ($_POST['end'] ?? ''));
 

@@ -16,6 +16,8 @@ function plugin_reservaplus_run_install(): bool
             `allow_recurring` TINYINT(1) NOT NULL DEFAULT 1,
             `notify_requester` TINYINT(1) NOT NULL DEFAULT 1,
             `notify_approver` TINYINT(1) NOT NULL DEFAULT 1,
+            `webhook_url` VARCHAR(255) DEFAULT NULL,
+            `webhook_secret` VARCHAR(255) DEFAULT NULL,
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
             `date_mod` TIMESTAMP NULL DEFAULT NULL,
             PRIMARY KEY (`id`)
@@ -31,10 +33,12 @@ function plugin_reservaplus_run_install(): bool
             `end` TIMESTAMP NULL DEFAULT NULL,
             `comment` TEXT DEFAULT NULL,
             `recurrence_json` LONGTEXT DEFAULT NULL,
+            `recurrence_group` VARCHAR(40) DEFAULT NULL,
             `native_reservations_json` LONGTEXT DEFAULT NULL,
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
             `date_mod` TIMESTAMP NULL DEFAULT NULL,
             PRIMARY KEY (`id`),
+            KEY `recurrence_group` (`recurrence_group`),
             KEY `entities_id` (`entities_id`),
             KEY `reservationitems_id` (`reservationitems_id`),
             KEY `users_id_requester` (`users_id_requester`),
@@ -92,6 +96,16 @@ function plugin_reservaplus_run_install(): bool
             KEY `begin_end` (`begin`, `end`),
             KEY `is_active` (`is_active`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        "CREATE TABLE IF NOT EXISTS `glpi_plugin_reservaplus_item_groups` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `reservationitems_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `groups_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `item_group` (`reservationitems_id`, `groups_id`),
+            KEY `reservationitems_id` (`reservationitems_id`),
+            KEY `groups_id` (`groups_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         "CREATE TABLE IF NOT EXISTS `glpi_plugin_reservaplus_notification_logs` (
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
             `event` VARCHAR(64) NOT NULL,
@@ -112,6 +126,23 @@ function plugin_reservaplus_run_install(): bool
         if (!$DB->doQuery($query)) {
             return false;
         }
+    }
+
+    // Migração para instalações existentes: colunas de webhook na config.
+    $cfgTable = 'glpi_plugin_reservaplus_configs';
+    foreach ([
+        'webhook_url'    => 'VARCHAR(255) DEFAULT NULL',
+        'webhook_secret' => 'VARCHAR(255) DEFAULT NULL',
+    ] as $col => $def) {
+        if (!$DB->fieldExists($cfgTable, $col)) {
+            $DB->doQuery("ALTER TABLE `{$cfgTable}` ADD COLUMN `{$col}` {$def}");
+        }
+    }
+
+    // Migração: grupo de recorrência nos requests (para cancelar a série inteira).
+    $reqTable = 'glpi_plugin_reservaplus_requests';
+    if (!$DB->fieldExists($reqTable, 'recurrence_group')) {
+        $DB->doQuery("ALTER TABLE `{$reqTable}` ADD COLUMN `recurrence_group` VARCHAR(40) DEFAULT NULL, ADD KEY `recurrence_group` (`recurrence_group`)");
     }
 
     $config = $DB->request([

@@ -61,6 +61,15 @@ class ReservationRequest extends CommonDBTM
             || (isset($_SESSION['glpi_use_mode']) && $_SESSION['glpi_use_mode'] === 2);
     }
 
+    public static function canCancelRow(array $row): bool
+    {
+        $status = (string) ($row['status'] ?? '');
+        if (in_array($status, [self::STATUS_CANCELLED, self::STATUS_REFUSED], true)) {
+            return false;
+        }
+        return self::canDeleteRow($row);
+    }
+
     public static function canDeleteRow(array $row): bool
     {
         // Super admin GLPI pode apagar qualquer reserva
@@ -82,6 +91,83 @@ class ReservationRequest extends CommonDBTM
         }
 
         return false;
+    }
+
+    public static function cancelRequest(int $requestId): bool
+    {
+        global $DB;
+
+        if ($requestId <= 0 || !$DB->tableExists(static::getTable())) {
+            return false;
+        }
+
+        $request = $DB->request([
+            'FROM'  => static::getTable(),
+            'WHERE' => ['id' => $requestId],
+            'LIMIT' => 1,
+        ])->current();
+
+        if (!$request || !self::canCancelRow($request)) {
+            return false;
+        }
+
+        $nativeIds = self::getNativeReservationIds($request);
+        if (!self::canDeleteNativeReservations($nativeIds)) {
+            return false;
+        }
+        self::deleteNativeReservations($nativeIds);
+
+        $updated = (bool) $DB->update(static::getTable(), [
+            'status'                   => self::STATUS_CANCELLED,
+            'native_reservations_json' => null,
+            'date_mod'                 => date('Y-m-d H:i:s'),
+        ], ['id' => $requestId]);
+
+        if ($updated) {
+            NotificationService::cancelled((array) $request);
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Cancela TODAS as ocorrências futuras de uma série de recorrência (begin no
+     * futuro), respeitando a permissão de cada uma (só dono/admin/gestor).
+     * Retorna quantas foram efetivamente canceladas.
+     */
+    public static function cancelSeries(string $group): int
+    {
+        global $DB;
+
+        $group = trim($group);
+        if ($group === '' || !$DB->tableExists(static::getTable())) {
+            return 0;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $ids = [];
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => static::getTable(),
+            'WHERE'  => [
+                'recurrence_group' => $group,
+                'begin'            => ['>=', $now],
+                'status'           => [self::STATUS_CREATED, self::STATUS_PENDING, self::STATUS_APPROVED],
+            ],
+            'ORDER'  => ['begin ASC'],
+            'LIMIT'  => 500,
+        ]) as $row) {
+            $ids[] = (int) $row['id'];
+        }
+
+        $count = 0;
+        foreach ($ids as $id) {
+            if (self::cancelRequest($id)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     public static function deleteRequest(int $requestId): bool
@@ -116,6 +202,8 @@ class ReservationRequest extends CommonDBTM
                 'plugin_reservaplus_requests_id' => $requestId,
             ]);
         }
+
+        NotificationService::webhook('reservation.cancelled', (array) $request);
 
         // Deleta diretamente — permissão já verificada acima via canDeleteRow()
         return (bool) $DB->delete(static::getTable(), ['id' => $requestId]);
@@ -295,22 +383,62 @@ class ReservationRequest extends CommonDBTM
 
     public static function showList(): void
     {
+        global $DB;
+
         $mine    = isset($_GET['mine']) && (string) $_GET['mine'] === '1';
-        $where   = [];
         $isAdmin = self::isGlpiAdmin() || self::canManageAllRequests();
+        $where   = [];
 
         if ($mine || !$isAdmin) {
             $where[static::getTable() . '.users_id_requester'] = (int) Session::getLoginUserID();
         }
 
-        $rows = self::getFiltered($where, 200);
+        // Filters from GET
+        $filterStatus   = trim((string) ($_GET['status'] ?? ''));
+        $filterDateFrom = trim((string) ($_GET['date_from'] ?? ''));
+        $filterDateTo   = trim((string) ($_GET['date_to'] ?? ''));
+        $filterItem     = (int) ($_GET['item'] ?? 0);
 
-        // Pré-carrega nomes dos usuários "para quem" a reserva foi feita
-        $forUserIds  = array_map(fn($r) => (int) ($r['users_id_for'] ?? 0), $rows);
+        if ($filterStatus !== '' && array_key_exists($filterStatus, self::getStatusOptions())) {
+            $where[static::getTable() . '.status'] = $filterStatus;
+        }
+        if ($filterDateFrom !== '' && ($ts = strtotime($filterDateFrom)) !== false) {
+            $where[static::getTable() . '.begin'] = ['>=', date('Y-m-d 00:00:00', $ts)];
+        }
+        if ($filterDateTo !== '' && ($ts = strtotime($filterDateTo)) !== false) {
+            $where[static::getTable() . '.end'] = ['<=', date('Y-m-d 23:59:59', $ts)];
+        }
+        if ($filterItem > 0) {
+            $where[static::getTable() . '.reservationitems_id'] = $filterItem;
+        }
+
+        $rows         = self::getFiltered($where, 200);
+        $forUserIds   = array_map(fn($r) => (int) ($r['users_id_for'] ?? 0), $rows);
         $forUserNames = self::fetchUserNames($forUserIds);
 
-        $mineUrl = Dashboard::getUrl('reservation.php') . '?mine=1';
-        $allUrl  = Dashboard::getUrl('reservation.php');
+        // Single token for all POST forms on this page (avoids CSRF pool exhaustion)
+        $csrfToken = Session::getNewCSRFToken();
+
+        // Load reservable items for filter select
+        $reservableItems = [];
+        if ($DB->tableExists('glpi_reservationitems')) {
+            foreach ($DB->request([
+                'FROM'  => 'glpi_reservationitems',
+                'WHERE' => ['is_active' => 1],
+                'ORDER' => ['id ASC'],
+                'LIMIT' => 200,
+            ]) as $itemRow) {
+                $reservableItems[(int) $itemRow['id']] = self::getItemDisplayName([
+                    '_itemtype'           => $itemRow['itemtype'] ?? '',
+                    '_items_id'           => $itemRow['items_id'] ?? 0,
+                    'reservationitems_id' => $itemRow['id'] ?? 0,
+                ]);
+            }
+        }
+
+        $baseUrl = Dashboard::getUrl('reservation.php');
+        $mineUrl = $baseUrl . '?mine=1';
+        $allUrl  = $baseUrl;
 
         echo "<div class='reservaplus-shell'>";
         echo "<div class='reservaplus-toolbar'>";
@@ -319,18 +447,47 @@ class ReservationRequest extends CommonDBTM
         echo '<p>' . __('Gerencie e acompanhe as reservas de itens.', 'reservaplus') . '</p>';
         echo '</div>';
         echo "<div class='reservaplus-actions'>";
-
         if ($isAdmin) {
             echo "<a class='btn " . ($mine ? 'btn-outline-secondary' : 'btn-secondary') . "' href='" . Html::cleanInputText($allUrl) . "'>" . __('Todas', 'reservaplus') . '</a>';
             echo "<a class='btn " . ($mine ? 'btn-secondary' : 'btn-outline-secondary') . "' href='" . Html::cleanInputText($mineUrl) . "'><i class='ti ti-user'></i> " . __('Minhas', 'reservaplus') . '</a>';
         }
-
         if (self::canCreate()) {
             echo "<a class='btn btn-primary' href='" . Dashboard::getUrl('reservation.form.php') . "'><i class='ti ti-plus'></i> " . __('Reservar', 'reservaplus') . '</a>';
         }
         echo "<a class='btn btn-outline-primary' href='" . Dashboard::getUrl('calendar.php') . "'><i class='ti ti-calendar'></i> " . __('Calendário', 'reservaplus') . '</a>';
         echo '</div>';
         echo '</div>';
+
+        // Filter bar
+        $filterBase = $baseUrl . ($mine ? '?mine=1&' : '?');
+        echo "<form method='get' action='" . Html::cleanInputText($baseUrl) . "' class='reservaplus-filters'>";
+        if ($mine) {
+            echo "<input type='hidden' name='mine' value='1'>";
+        }
+        echo '<label><span>' . __('Status', 'reservaplus') . "</span><select class='form-select form-select-sm' name='status'>";
+        echo "<option value=''>" . __('Todos', 'reservaplus') . '</option>';
+        foreach (self::getStatusOptions() as $val => $label) {
+            $sel = $filterStatus === $val ? ' selected' : '';
+            echo "<option value='" . Html::cleanInputText($val) . "'" . $sel . '>' . Html::cleanInputText($label) . '</option>';
+        }
+        echo '</select></label>';
+
+        echo '<label><span>' . __('De', 'reservaplus') . "</span><input class='form-control form-control-sm' type='date' name='date_from' value='" . Html::cleanInputText($filterDateFrom) . "'></label>";
+        echo '<label><span>' . __('Até', 'reservaplus') . "</span><input class='form-control form-control-sm' type='date' name='date_to' value='" . Html::cleanInputText($filterDateTo) . "'></label>";
+
+        echo '<label><span>' . __('Item', 'reservaplus') . "</span><select class='form-select form-select-sm' name='item'>";
+        echo "<option value='0'>" . __('Todos', 'reservaplus') . '</option>';
+        foreach ($reservableItems as $itemId => $itemLabel) {
+            $sel = $filterItem === $itemId ? ' selected' : '';
+            echo "<option value='" . $itemId . "'" . $sel . '>' . Html::cleanInputText($itemLabel) . '</option>';
+        }
+        echo '</select></label>';
+
+        echo "<div style='display:flex;align-items:flex-end;gap:6px'>";
+        echo "<button type='submit' class='btn btn-sm btn-outline-secondary'><i class='ti ti-search'></i> " . __('Filtrar', 'reservaplus') . '</button>';
+        echo "<a class='btn btn-sm btn-outline-secondary' href='" . Html::cleanInputText($mine ? $mineUrl : $allUrl) . "' title='" . __('Limpar filtros', 'reservaplus') . "'><i class='ti ti-x'></i></a>";
+        echo '</div>';
+        echo '</form>'; // GET form — no CSRF token needed
 
         echo "<section class='reservaplus-panel'>";
         echo "<div class='table-responsive'>";
@@ -343,11 +500,12 @@ class ReservationRequest extends CommonDBTM
         }
         echo '<th>' . __('Início', 'reservaplus') . '</th>';
         echo '<th>' . __('Fim', 'reservaplus') . '</th>';
+        echo '<th>' . __('Status', 'reservaplus') . '</th>';
         echo '<th>' . __('Ações', 'reservaplus') . '</th>';
         echo '</tr></thead><tbody>';
 
         if ($rows === []) {
-            $colspan = ($isAdmin && !$mine) ? 6 : 5;
+            $colspan = ($isAdmin && !$mine) ? 7 : 6;
             echo "<tr><td colspan='{$colspan}'>";
             echo "<div class='reservaplus-empty reservaplus-empty-table'>";
             echo "<i class='ti ti-calendar-plus'></i>";
@@ -358,19 +516,19 @@ class ReservationRequest extends CommonDBTM
         }
 
         foreach ($rows as $row) {
-            $begin     = (string) ($row['begin'] ?? '');
-            $end       = (string) ($row['end'] ?? '');
-            $beginFmt  = $begin !== '' ? date('d/m/Y H:i', strtotime($begin)) : '-';
-            $endFmt    = $end   !== '' ? date('d/m/Y H:i', strtotime($end))   : '-';
-            $reqId     = (int) ($row['users_id_requester'] ?? 0);
-            $forId     = (int) ($row['users_id_for'] ?? 0);
+            $begin       = (string) ($row['begin'] ?? '');
+            $end         = (string) ($row['end'] ?? '');
+            $beginFmt    = $begin !== '' ? date('d/m/Y H:i', strtotime($begin)) : '-';
+            $endFmt      = $end   !== '' ? date('d/m/Y H:i', strtotime($end))   : '-';
+            $status      = (string) ($row['status'] ?? self::STATUS_CREATED);
+            $reqId       = (int) ($row['users_id_requester'] ?? 0);
+            $forId       = (int) ($row['users_id_for'] ?? 0);
             $hasForOther = $forId > 0 && $forId !== $reqId;
-            $forName   = $hasForOther ? ($forUserNames[$forId] ?? '#' . $forId) : '';
+            $forName     = $hasForOther ? ($forUserNames[$forId] ?? '#' . $forId) : '';
 
             echo '<tr>';
             echo '<td>#' . (int) ($row['id'] ?? 0) . '</td>';
 
-            // Item + badge "Para" quando reservado para outra pessoa
             $itemCell = Html::cleanInputText(self::getItemDisplayName($row));
             if ($hasForOther) {
                 $itemCell .= " <span class='reservaplus-badge reservaplus-badge-pending' title='" . __('Reservado para', 'reservaplus') . "'><i class='ti ti-user-share' style='font-size:0.75rem'></i> " . Html::cleanInputText($forName) . '</span>';
@@ -382,13 +540,31 @@ class ReservationRequest extends CommonDBTM
             }
             echo '<td>' . Html::cleanInputText($beginFmt) . '</td>';
             echo '<td>' . Html::cleanInputText($endFmt) . '</td>';
+            echo '<td><span class="reservaplus-badge ' . Html::cleanInputText(self::getStatusClass($status)) . '">' . Html::cleanInputText(self::getStatusLabel($status)) . '</span></td>';
             echo "<td class='reservaplus-row-actions'>";
             echo "<a class='btn btn-sm btn-outline-secondary' href='" . Dashboard::getUrl('reservation.form.php') . '?duplicate=' . (int) ($row['id'] ?? 0) . "'><i class='ti ti-copy'></i> " . __('Duplicar', 'reservaplus') . '</a>';
+            $rowId = (int) ($row['id'] ?? 0);
+            if (self::canCancelRow($row)) {
+                echo "<form method='post' action='" . Dashboard::getUrl('reservation.action.php') . "' class='reservaplus-inline-form' onsubmit=\"return confirm('" . __('Cancelar esta reserva?', 'reservaplus') . "');\">";
+                echo "<input type='hidden' name='id' value='" . $rowId . "'>";
+                echo "<input type='hidden' name='_glpi_csrf_token' value='" . Html::cleanInputText($csrfToken) . "'>";
+                echo "<button type='submit' name='cancel' value='1' class='btn btn-sm btn-outline-warning'><i class='ti ti-ban'></i> " . __('Cancelar', 'reservaplus') . '</button>';
+                echo '</form>';
+            }
+            $group = trim((string) ($row['recurrence_group'] ?? ''));
+            if ($group !== '' && self::canCancelRow($row)) {
+                echo "<form method='post' action='" . Dashboard::getUrl('reservation.action.php') . "' class='reservaplus-inline-form' onsubmit=\"return confirm('" . __('Cancelar TODA a série (ocorrências futuras)?', 'reservaplus') . "');\">";
+                echo "<input type='hidden' name='recurrence_group' value='" . Html::cleanInputText($group) . "'>";
+                echo "<input type='hidden' name='_glpi_csrf_token' value='" . Html::cleanInputText($csrfToken) . "'>";
+                echo "<button type='submit' name='cancel_series' value='1' class='btn btn-sm btn-outline-warning'><i class='ti ti-repeat-off'></i> " . __('Cancelar série', 'reservaplus') . '</button>';
+                echo '</form>';
+            }
             if (self::canDeleteRow($row)) {
-                echo "<form method='post' action='" . Dashboard::getUrl('reservation.action.php') . "' class='reservaplus-inline-form' onsubmit=\"return confirm('" . __('Apagar esta reserva?', 'reservaplus') . "');\">";
-                echo Html::hidden('id', ['value' => (int) ($row['id'] ?? 0)]);
+                echo "<form method='post' action='" . Dashboard::getUrl('reservation.action.php') . "' class='reservaplus-inline-form' onsubmit=\"return confirm('" . __('Apagar permanentemente?', 'reservaplus') . "');\">";
+                echo "<input type='hidden' name='id' value='" . $rowId . "'>";
+                echo "<input type='hidden' name='_glpi_csrf_token' value='" . Html::cleanInputText($csrfToken) . "'>";
                 echo "<button type='submit' name='delete' value='1' class='btn btn-sm btn-outline-danger'><i class='ti ti-trash'></i> " . __('Apagar', 'reservaplus') . '</button>';
-                Html::closeForm();
+                echo '</form>';
             }
             echo '</td>';
             echo '</tr>';

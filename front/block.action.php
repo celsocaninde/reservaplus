@@ -10,9 +10,8 @@ include('../../../inc/includes.php');
 
 Session::checkRight(Block::$rightname, READ);
 
+// CSRF já validado/consumido pelo kernel do GLPI 11 (CheckCsrfListener).
 if (isset($_POST['delete'])) {
-    Session::checkCSRF($_POST);
-
     $id = (int) ($_POST['id'] ?? 0);
     if ($id > 0 && (ReservationRequest::isGlpiAdmin() || Block::canDelete())) {
         global $DB;
