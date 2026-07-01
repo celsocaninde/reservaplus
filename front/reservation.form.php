@@ -479,97 +479,123 @@ Dashboard::renderHeader(__('Nova reserva do Reserva Plus', 'reservaplus'));
 Dashboard::includeAssets();
 
 echo "<div class='reservaplus-shell'>";
-echo "<form method='post' action='" . Dashboard::getUrl('reservation.form.php') . "'>";
-echo "<section class='reservaplus-panel reservaplus-form-panel'>";
+echo "<form method='post' action='" . Dashboard::getUrl('reservation.form.php') . "' class='rp-booking-form'>";
+echo "<section class='reservaplus-panel rp-booking-panel'>";
+
 echo "<div class='reservaplus-panel-header'>";
-echo '<div>';
-echo '<h1>' . $pageTitle . '</h1>';
-echo '<p>' . __('Selecione um ou mais itens e reserve todos no mesmo período. Os itens ocupados são apenas avisados.', 'reservaplus') . '</p>';
-echo '</div>';
+echo "<div><h1>" . $pageTitle . "</h1><p>" . __('Selecione os itens e configure o período da reserva.', 'reservaplus') . "</p></div>";
 echo "<a class='btn btn-outline-secondary' href='" . Dashboard::getUrl('reservation.php') . "'><i class='ti ti-arrow-left'></i> " . __('Voltar', 'reservaplus') . '</a>';
 echo '</div>';
 
-echo "<div class='reservaplus-form-grid reservaplus-reservation-form' data-reservaplus-availability-form data-availability-url='/plugins/reservaplus/ajax/availability.php' data-slots-url='/plugins/reservaplus/ajax/freeslots.php'>";
+echo "<div class='rp-booking-layout' data-reservaplus-availability-form data-availability-url='/plugins/reservaplus/ajax/availability.php' data-slots-url='/plugins/reservaplus/ajax/freeslots.php'>";
+
+// ── COLUNA ESQUERDA: seleção de itens ──
+echo "<div class='rp-item-col'>";
+echo "<div class='rp-col-head'>";
+echo "<span class='rp-col-title'><i class='ti ti-building'></i> " . __('Itens disponíveis', 'reservaplus') . '</span>';
+echo "<span class='rp-col-hint'>" . __('clique para selecionar', 'reservaplus') . '</span>';
+echo '</div>';
+
 if ($categoryLabels !== []) {
-    echo "<div class='reservaplus-field-wide reservaplus-item-tools' data-reservaplus-item-tools>";
-    echo "<select class='form-select form-select-sm' data-reservaplus-cat aria-label='" . __('Categoria', 'reservaplus') . "'>";
-    echo "<option value=''>" . __('Categoria…', 'reservaplus') . '</option>';
+    echo "<div class='rp-item-tools' data-reservaplus-item-tools>";
+    echo "<select class='form-select form-select-sm' data-reservaplus-cat>";
+    echo "<option value=''>" . __('Filtrar categoria…', 'reservaplus') . '</option>';
     foreach ($categoryLabels as $cl) {
         echo "<option value='" . Html::cleanInputText($cl) . "'>" . Html::cleanInputText($cl) . '</option>';
     }
     echo '</select>';
-    echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-select-cat>" . __('Selecionar categoria', 'reservaplus') . '</button>';
+    echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-select-cat>" . __('Selecionar', 'reservaplus') . '</button>';
     echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-select-all>" . __('Todos', 'reservaplus') . '</button>';
     echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-reservaplus-clear-sel>" . __('Limpar', 'reservaplus') . '</button>';
     echo '</div>';
 }
-echo '<label class="reservaplus-field-item"><span>' . __('Itens reserváveis', 'reservaplus') . ' <small class="text-muted">' . __('(selecione um ou vários)', 'reservaplus') . "</small></span><select name='reservationitems_id[]' class='form-select' multiple size='8' required>";
+
+echo "<div class='rp-item-list' data-reservaplus-item-list>";
 $currentGroup = null;
 foreach ($items as $item) {
     $itemId    = (int) ($item['id'] ?? 0);
     $typeLabel = (string) ($item['_typelabel'] ?? __('Outros', 'reservaplus'));
     if ($typeLabel !== $currentGroup) {
         if ($currentGroup !== null) {
-            echo '</optgroup>';
+            echo '</div>';
         }
-        echo "<optgroup label='" . Html::cleanInputText($typeLabel) . "'>";
+        echo "<div class='rp-item-cat' data-group='" . Html::cleanInputText($typeLabel) . "'>";
+        echo "<div class='rp-item-cat-head'><i class='ti ti-tag'></i><span>" . Html::cleanInputText($typeLabel) . '</span></div>';
         $currentGroup = $typeLabel;
     }
-    $selected = $itemId === $selectedItem ? ' selected' : '';
-    echo "<option value='" . $itemId . "'" . $selected . '>' . Html::cleanInputText((string) ($item['_label'] ?? '#' . $itemId)) . '</option>';
+    $checked = $itemId === $selectedItem ? ' checked' : '';
+    echo "<label class='rp-item-card'>";
+    echo "<input type='checkbox' name='reservationitems_id[]' value='" . $itemId . "'" . $checked . ">";
+    echo "<span class='rp-item-name'>" . Html::cleanInputText((string) ($item['_label'] ?? '#' . $itemId)) . '</span>';
+    echo "<span class='rp-item-check'><i class='ti ti-check'></i></span>";
+    echo '</label>';
 }
 if ($currentGroup !== null) {
-    echo '</optgroup>';
+    echo '</div>';
 }
-echo '</select></label>';
-echo '<label><span>' . __('Início', 'reservaplus') . "</span><input class='form-control' type='datetime-local' name='begin' value='" . Html::cleanInputText($now) . "' required></label>";
-echo '<label><span>' . __('Fim', 'reservaplus') . "</span><input class='form-control' type='datetime-local' name='end' value='" . Html::cleanInputText($end) . "' required></label>";
+echo '</div>'; // rp-item-list
+echo '</div>'; // rp-item-col
 
-echo "<div class='reservaplus-field-wide reservaplus-duration-presets' data-reservaplus-presets data-bh-start='" . Html::cleanInputText($bhStart) . "' data-bh-end='" . Html::cleanInputText($bhEnd) . "'>";
-echo "<span class='reservaplus-presets-label'>" . __('Duração rápida:', 'reservaplus') . '</span>';
-echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-duration='60'>1h</button>";
-echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-duration='120'>2h</button>";
-echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-duration='240'>4h</button>";
+// ── COLUNA DIREITA: opções de reserva ──
+echo "<div class='rp-options-col'>";
+
+// Período
+echo "<div class='rp-section'>";
+echo "<div class='rp-section-title'><i class='ti ti-calendar-event'></i> " . __('Período', 'reservaplus') . '</div>';
+echo "<div class='rp-dt-row'>";
+echo "<label class='rp-dt-label'><span>" . __('Início', 'reservaplus') . "</span><input class='form-control' type='datetime-local' name='begin' value='" . Html::cleanInputText($now) . "' required></label>";
+echo "<i class='ti ti-arrow-right rp-dt-sep'></i>";
+echo "<label class='rp-dt-label'><span>" . __('Fim', 'reservaplus') . "</span><input class='form-control' type='datetime-local' name='end' value='" . Html::cleanInputText($end) . "' required></label>";
+echo '</div>';
+echo "<div class='rp-presets' data-reservaplus-presets data-bh-start='" . Html::cleanInputText($bhStart) . "' data-bh-end='" . Html::cleanInputText($bhEnd) . "'>";
+echo "<span class='rp-presets-label'>" . __('Duração rápida:', 'reservaplus') . '</span>';
+echo "<div class='rp-presets-btns'>";
+foreach (['60' => '1h', '120' => '2h', '240' => '4h'] as $min => $lbl) {
+    echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-duration='" . $min . "'>" . $lbl . '</button>';
+}
 echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-period='morning'>" . __('Manhã', 'reservaplus') . '</button>';
 echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-period='afternoon'>" . __('Tarde', 'reservaplus') . '</button>';
 echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-period='full'>" . __('Dia todo', 'reservaplus') . '</button>';
-echo "<button type='button' class='btn btn-sm btn-outline-success' data-reservaplus-find-slots><i class='ti ti-search'></i> " . __('Horários livres', 'reservaplus') . '</button>';
+echo "<button type='button' class='btn btn-sm btn-outline-success rp-slots-btn' data-reservaplus-find-slots><i class='ti ti-search'></i> " . __('Horários livres', 'reservaplus') . '</button>';
 echo '</div>';
+echo '</div>';
+echo '</div>'; // rp-section período
 
-echo "<div class='reservaplus-availability reservaplus-field-wide' data-reservaplus-availability hidden></div>";
-echo "<div class='reservaplus-field-wide reservaplus-slots' data-reservaplus-slots hidden></div>";
+echo "<div class='reservaplus-availability rp-availability' data-reservaplus-availability hidden></div>";
+echo "<div class='rp-slots' data-reservaplus-slots hidden></div>";
 
-// --- Recorrência (diária / semanal / mensal) ---
-echo "<div class='reservaplus-field-wide reservaplus-recurrence' data-reservaplus-recurrence>";
-echo '<label><span>' . __('Repetir', 'reservaplus') . "</span><select name='recurrence_type' class='form-select' data-reservaplus-rec-type>";
+// Recorrência
+echo "<div class='rp-section'>";
+echo "<div class='rp-section-title'><i class='ti ti-repeat'></i> " . __('Recorrência', 'reservaplus') . '</div>';
+echo "<div data-reservaplus-recurrence>";
+echo "<label class='rp-dt-label'><span>" . __('Repetir', 'reservaplus') . "</span><select name='recurrence_type' class='form-select' data-reservaplus-rec-type>";
 echo "<option value='none'>" . __('Não repete', 'reservaplus') . '</option>';
 echo "<option value='daily'>" . __('Diariamente', 'reservaplus') . '</option>';
 echo "<option value='weekly'>" . __('Semanalmente', 'reservaplus') . '</option>';
 echo "<option value='monthly'>" . __('Mensalmente (mesmo dia do mês)', 'reservaplus') . '</option>';
 echo '</select></label>';
-
 echo "<div class='reservaplus-rec-weekdays' data-reservaplus-rec-weekdays hidden>";
 echo "<span class='reservaplus-rec-label'>" . __('Dias da semana', 'reservaplus') . '</span>';
-foreach ([0 => __('Dom', 'reservaplus'), 1 => __('Seg', 'reservaplus'), 2 => __('Ter', 'reservaplus'), 3 => __('Qua', 'reservaplus'), 4 => __('Qui', 'reservaplus'), 5 => __('Sex', 'reservaplus'), 6 => __('Sáb', 'reservaplus')] as $val => $lbl) {
-    echo "<label class='reservaplus-dow'><input type='checkbox' name='recurrence_weekdays[]' value='" . $val . "'><span>" . Html::cleanInputText((string) $lbl) . '</span></label>';
+foreach ([0 => 'Dom', 1 => 'Seg', 2 => 'Ter', 3 => 'Qua', 4 => 'Qui', 5 => 'Sex', 6 => 'Sáb'] as $val => $lbl) {
+    echo "<label class='reservaplus-dow'><input type='checkbox' name='recurrence_weekdays[]' value='" . $val . "'><span>" . $lbl . '</span></label>';
 }
 echo '</div>';
-
 echo "<div class='reservaplus-rec-end' data-reservaplus-rec-end hidden>";
-echo '<label><span>' . __('Terminar', 'reservaplus') . "</span><select name='recurrence_end' class='form-select' data-reservaplus-rec-endmode>";
+echo "<label class='rp-dt-label'><span>" . __('Terminar', 'reservaplus') . "</span><select name='recurrence_end' class='form-select' data-reservaplus-rec-endmode>";
 echo "<option value='count'>" . __('Após N ocorrências', 'reservaplus') . '</option>';
 echo "<option value='until'>" . __('Em uma data', 'reservaplus') . '</option>';
 echo '</select></label>';
-echo "<label data-reservaplus-rec-count><span>" . __('Ocorrências', 'reservaplus') . "</span><input class='form-control' type='number' name='recurrence_count' min='1' max='100' value='4'></label>";
-echo "<label data-reservaplus-rec-until hidden><span>" . __('Até', 'reservaplus') . "</span><input class='form-control' type='date' name='recurrence_until'></label>";
+echo "<label class='rp-dt-label' data-reservaplus-rec-count><span>" . __('Ocorrências', 'reservaplus') . "</span><input class='form-control' type='number' name='recurrence_count' min='1' max='100' value='4'></label>";
+echo "<label class='rp-dt-label' data-reservaplus-rec-until hidden><span>" . __('Até', 'reservaplus') . "</span><input class='form-control' type='date' name='recurrence_until'></label>";
 echo '</div>';
-echo '</div>';
+echo '</div>'; // data-reservaplus-recurrence
+echo '</div>'; // rp-section recorrência
 
+// Reservar para outro
 if ($canForOthers) {
-    echo '<label class="reservaplus-field-wide reservaplus-for-others"><span>';
-    echo "<i class='ti ti-user-share reservaplus-ico-accent'></i>";
-    echo __('Reservar para', 'reservaplus');
-    echo "</span><select name='users_id_for' class='form-select'>";
+    echo "<label class='rp-dt-label rp-for-others'>";
+    echo "<span><i class='ti ti-user-share reservaplus-ico-accent'></i> " . __('Reservar para', 'reservaplus') . '</span>';
+    echo "<select name='users_id_for' class='form-select'>";
     echo "<option value='" . (int) Session::getLoginUserID() . "'" . ($selectedFor === (int) Session::getLoginUserID() ? ' selected' : '') . '>' . __('Eu mesmo', 'reservaplus') . '</option>';
     foreach ($users as $user) {
         $uid = (int) ($user['id'] ?? 0);
@@ -582,13 +608,17 @@ if ($canForOthers) {
     echo '</select></label>';
 }
 
-echo '<label class="reservaplus-field-wide"><span>' . __('Comentário', 'reservaplus') . "</span><textarea class='form-control' name='comment' rows='4' placeholder='" . __('Motivo, sala, observações...', 'reservaplus') . "'>" . Html::cleanInputText($comment) . '</textarea></label>';
+// Comentário
+echo "<label class='rp-dt-label'><span><i class='ti ti-message'></i> " . __('Comentário', 'reservaplus') . "</span><textarea class='form-control' name='comment' rows='3' placeholder='" . __('Motivo, sala, observações...', 'reservaplus') . "'>" . Html::cleanInputText($comment) . '</textarea></label>';
+
+// Botões de ação
+echo "<div class='rp-submit-row'>";
+echo Html::submit(__('Reservar', 'reservaplus'), ['name' => 'add', 'class' => 'btn btn-primary rp-btn-reservar']);
+echo "<a class='btn btn-outline-secondary' href='" . Dashboard::getUrl('calendar.php') . "'><i class='ti ti-calendar'></i> " . __('Ver calendário', 'reservaplus') . '</a>';
 echo '</div>';
 
-echo "<div class='reservaplus-actions mt-3'>";
-echo Html::submit(__('Reservar', 'reservaplus'), ['name' => 'add', 'class' => 'btn btn-primary']);
-echo "<a class='btn btn-outline-primary' href='" . Dashboard::getUrl('calendar.php') . "'><i class='ti ti-calendar'></i> " . __('Ver calendário', 'reservaplus') . '</a>';
-echo '</div>';
+echo '</div>'; // rp-options-col
+echo '</div>'; // rp-booking-layout
 echo '</section>';
 Html::closeForm();
 echo '</div>';

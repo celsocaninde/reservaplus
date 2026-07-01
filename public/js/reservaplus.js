@@ -64,9 +64,6 @@
   function statusLabel(status) {
     var labels = {
       created: "Ativa",
-      pending: "Pendente",
-      approved: "Aprovada",
-      refused: "Recusada",
       cancelled: "Cancelada",
     };
     return labels[status] || status;
@@ -75,9 +72,6 @@
   function statusBadgeClass(status) {
     var map = {
       created: "reservaplus-badge-approved",
-      approved: "reservaplus-badge-approved",
-      pending: "reservaplus-badge-pending",
-      refused: "reservaplus-badge-danger",
       cancelled: "",
     };
     return map[status] || "";
@@ -450,8 +444,8 @@
       });
       form.appendChild(deleteBtn);
 
-      // Cancel button for non-cancelled/refused requests
-      var cancelableStatuses = ["created", "pending", "approved"];
+      // Cancel button for non-cancelled requests
+      var cancelableStatuses = ["created"];
       if (event.status && cancelableStatuses.indexOf(event.status) !== -1) {
         var cancelForm = document.createElement("form");
         cancelForm.method = "post";
@@ -762,7 +756,8 @@
       .forEach(function (form) {
         var url = form.getAttribute("data-availability-url");
         var box = form.querySelector("[data-reservaplus-availability]");
-        var itemField = form.querySelector(
+        var itemContainer = form.querySelector("[data-reservaplus-item-list]");
+        var itemField = itemContainer || form.querySelector(
           "[name='reservationitems_id'], [name='reservationitems_id[]']"
         );
         var beginField = form.querySelector("[name='begin']");
@@ -773,6 +768,12 @@
         var token = 0;
 
         function selectedItemIds() {
+          if (itemContainer) {
+            return Array.prototype.slice
+              .call(itemContainer.querySelectorAll("input[type='checkbox']:checked"))
+              .map(function (cb) { return parseInt(cb.value, 10) || 0; })
+              .filter(function (v) { return v > 0; });
+          }
           if (itemField.multiple) {
             return Array.prototype.slice
               .call(itemField.selectedOptions)
@@ -855,7 +856,7 @@
           timer = window.setTimeout(check, 350);
         }
 
-        itemField.addEventListener("change", schedule);
+        (itemContainer || itemField).addEventListener("change", schedule);
         beginField.addEventListener("change", schedule);
         endField.addEventListener("change", schedule);
         beginField.addEventListener("input", schedule);
@@ -962,17 +963,24 @@
       .forEach(function (tools) {
         var form = tools.closest("form");
         if (!form) return;
-        var select = form.querySelector("select[name='reservationitems_id[]']");
-        if (!select) return;
+        var itemContainer = form.querySelector("[data-reservaplus-item-list]");
+        var select = !itemContainer ? form.querySelector("select[name='reservationitems_id[]']") : null;
+        if (!itemContainer && !select) return;
         var catSelect = tools.querySelector("[data-reservaplus-cat]");
 
         function fireChange() {
-          select.dispatchEvent(new Event("change", { bubbles: true }));
+          (itemContainer || select).dispatchEvent(new Event("change", { bubbles: true }));
         }
         function setAll(value) {
-          Array.prototype.forEach.call(select.options, function (o) {
-            o.selected = value;
-          });
+          if (itemContainer) {
+            itemContainer.querySelectorAll("input[type='checkbox']").forEach(function (cb) {
+              cb.checked = value;
+            });
+          } else {
+            Array.prototype.forEach.call(select.options, function (o) {
+              o.selected = value;
+            });
+          }
           fireChange();
         }
 
@@ -981,13 +989,15 @@
           selCatBtn.addEventListener("click", function () {
             var cat = catSelect.value;
             if (!cat) return;
-            Array.prototype.forEach.call(select.options, function (o) {
-              var group =
-                o.parentElement && o.parentElement.tagName === "OPTGROUP"
-                  ? o.parentElement.label
-                  : "";
-              if (group === cat) o.selected = true;
-            });
+            if (itemContainer) {
+              var group = itemContainer.querySelector("[data-group='" + CSS.escape(cat) + "']");
+              if (group) group.querySelectorAll("input[type='checkbox']").forEach(function (cb) { cb.checked = true; });
+            } else {
+              Array.prototype.forEach.call(select.options, function (o) {
+                var g = o.parentElement && o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : "";
+                if (g === cat) o.selected = true;
+              });
+            }
             fireChange();
           });
         }
@@ -1013,10 +1023,17 @@
         var box = form.querySelector("[data-reservaplus-slots]");
         var beginField = form.querySelector("[name='begin']");
         var endField = form.querySelector("[name='end']");
-        var select = form.querySelector("select[name='reservationitems_id[]']");
-        if (!url || !box || !beginField || !endField || !select) return;
+        var itemContainer = form.querySelector("[data-reservaplus-item-list]");
+        var select = !itemContainer ? form.querySelector("select[name='reservationitems_id[]']") : null;
+        if (!url || !box || !beginField || !endField || (!itemContainer && !select)) return;
 
         function selectedIds() {
+          if (itemContainer) {
+            return Array.prototype.slice
+              .call(itemContainer.querySelectorAll("input[type='checkbox']:checked"))
+              .map(function (cb) { return parseInt(cb.value, 10) || 0; })
+              .filter(function (v) { return v > 0; });
+          }
           return Array.prototype.slice
             .call(select.selectedOptions)
             .map(function (o) {
@@ -1136,6 +1153,42 @@
       });
   }
 
+  // --- Animação de submit e validação de itens ---
+
+  function initReservationSubmit() {
+    document.querySelectorAll("[data-reservaplus-availability-form]").forEach(function (container) {
+      var theForm = container.closest("form");
+      if (!theForm) return;
+      theForm.addEventListener("submit", function (e) {
+        var itemList = container.querySelector("[data-reservaplus-item-list]");
+        if (itemList) {
+          var checked = itemList.querySelectorAll("input[type='checkbox']:checked");
+          if (checked.length === 0) {
+            e.preventDefault();
+            itemList.classList.add("rp-item-list--error");
+            setTimeout(function () { itemList.classList.remove("rp-item-list--error"); }, 1500);
+            return;
+          }
+        }
+
+        // Mostra overlay e desabilita botão — sem preventDefault para não quebrar CSRF
+        var btn = theForm.querySelector("[name='add']");
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = "<span class='rp-btn-spinner'></span> Criando reserva…";
+        }
+        var overlay = document.createElement("div");
+        overlay.className = "rp-submit-overlay";
+        overlay.innerHTML =
+          "<div class='rp-submit-card'>" +
+          "<div class='rp-submit-spinner'></div>" +
+          "<span>Criando reserva…</span>" +
+          "</div>";
+        document.body.appendChild(overlay);
+      });
+    });
+  }
+
   // --- Bootstrap ---
 
   if (document.readyState === "loading") {
@@ -1145,6 +1198,7 @@
       initQuickReservationModal();
       initAvailabilityChecker();
       initReservationFormTools();
+      initReservationSubmit();
     });
   } else {
     initCalendars();
@@ -1152,5 +1206,6 @@
     initQuickReservationModal();
     initAvailabilityChecker();
     initReservationFormTools();
+    initReservationSubmit();
   }
 })();

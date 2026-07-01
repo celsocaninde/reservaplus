@@ -21,12 +21,6 @@ class Profile extends CoreProfile
                 'rights'   => [READ, CREATE, UPDATE, PURGE],
             ],
             [
-                'itemtype' => Approval::class,
-                'label'    => __('Aprovações do Reserva Plus', 'reservaplus'),
-                'field'    => Approval::$rightname,
-                'rights'   => [READ, UPDATE],
-            ],
-            [
                 'itemtype' => Rule::class,
                 'label'    => __('Regras do Reserva Plus', 'reservaplus'),
                 'field'    => Rule::$rightname,
@@ -315,10 +309,6 @@ class Profile extends CoreProfile
             ReservationRequest::$rightname => [
                 'icon' => 'ti ti-calendar-check',
                 'desc' => __('Criar, ver e gerenciar reservas de itens.', 'reservaplus'),
-            ],
-            Approval::$rightname => [
-                'icon' => 'ti ti-thumb-up',
-                'desc' => __('Aprovar ou recusar solicitações pendentes.', 'reservaplus'),
             ],
             Rule::$rightname => [
                 'icon' => 'ti ti-adjustments',

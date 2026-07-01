@@ -123,14 +123,4 @@ class Rule extends CommonDBTM
 
         return null;
     }
-
-    public static function requiresApprovalForCreate(int $profileId, int $entityId, string $itemtype): bool
-    {
-        foreach (self::getApplicableRules($profileId, $entityId, $itemtype) as $rule) {
-            if (!empty($rule['requires_approval'])) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

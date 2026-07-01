@@ -140,16 +140,11 @@ class Config extends CommonDBTM
         echo "<div class='reservaplus-panel-header'>";
         echo '<div>';
         echo '<h1>' . __('Configuração do Reserva Plus', 'reservaplus') . '</h1>';
-        echo '<p>' . __('Comportamento padrão para aprovações, recorrência, horários e notificações.', 'reservaplus') . '</p>';
+        echo '<p>' . __('Comportamento padrão para recorrência, horários e notificações.', 'reservaplus') . '</p>';
         echo '</div>';
         echo '</div>';
 
         echo "<div class='reservaplus-form-grid'>";
-        self::fieldSelect('approval_mode', __('Modo de aprovação', 'reservaplus'), [
-            'rules'  => __('Usar regras', 'reservaplus'),
-            'always' => __('Sempre exigir aprovação', 'reservaplus'),
-            'never'  => __('Criar diretamente', 'reservaplus'),
-        ], (string) ($this->fields['approval_mode'] ?? 'rules'), $canEdit);
         self::fieldNumber('default_duration_minutes', __('Duração padrão em minutos', 'reservaplus'), (int) ($this->fields['default_duration_minutes'] ?? 60), $canEdit);
         self::fieldTime('business_hours_start', __('Início do horário comercial', 'reservaplus'), (string) ($this->fields['business_hours_start'] ?? '08:00:00'), $canEdit);
         self::fieldTime('business_hours_end', __('Fim do horário comercial', 'reservaplus'), (string) ($this->fields['business_hours_end'] ?? '18:00:00'), $canEdit);
@@ -185,9 +180,6 @@ class Config extends CommonDBTM
 
     private function normalizeInput(array $input): array
     {
-        $input['approval_mode'] = in_array(($input['approval_mode'] ?? 'rules'), ['rules', 'always', 'never'], true)
-            ? (string) $input['approval_mode']
-            : 'rules';
         $input['default_duration_minutes'] = max(15, (int) ($input['default_duration_minutes'] ?? 60));
         $input['allow_recurring'] = isset($input['allow_recurring']) ? 1 : 0;
         $input['notify_requester'] = isset($input['notify_requester']) ? 1 : 0;

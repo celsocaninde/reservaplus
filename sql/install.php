@@ -9,13 +9,11 @@ function plugin_reservaplus_run_install(): bool
     $queries = [
         "CREATE TABLE IF NOT EXISTS `glpi_plugin_reservaplus_configs` (
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `approval_mode` VARCHAR(32) NOT NULL DEFAULT 'rules',
             `default_duration_minutes` INT UNSIGNED NOT NULL DEFAULT 60,
             `business_hours_start` TIME DEFAULT '08:00:00',
             `business_hours_end` TIME DEFAULT '18:00:00',
             `allow_recurring` TINYINT(1) NOT NULL DEFAULT 1,
             `notify_requester` TINYINT(1) NOT NULL DEFAULT 1,
-            `notify_approver` TINYINT(1) NOT NULL DEFAULT 1,
             `webhook_url` VARCHAR(255) DEFAULT NULL,
             `webhook_secret` VARCHAR(255) DEFAULT NULL,
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
@@ -45,19 +43,6 @@ function plugin_reservaplus_run_install(): bool
             KEY `users_id_for` (`users_id_for`),
             KEY `status` (`status`),
             KEY `begin_end` (`begin`, `end`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-        "CREATE TABLE IF NOT EXISTS `glpi_plugin_reservaplus_approvals` (
-            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `plugin_reservaplus_requests_id` INT UNSIGNED NOT NULL,
-            `users_id_approver` INT UNSIGNED NOT NULL DEFAULT 0,
-            `status` VARCHAR(32) NOT NULL DEFAULT 'pending',
-            `decision_comment` TEXT DEFAULT NULL,
-            `decided_at` TIMESTAMP NULL DEFAULT NULL,
-            `date_creation` TIMESTAMP NULL DEFAULT NULL,
-            PRIMARY KEY (`id`),
-            KEY `plugin_reservaplus_requests_id` (`plugin_reservaplus_requests_id`),
-            KEY `users_id_approver` (`users_id_approver`),
-            KEY `status` (`status`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         "CREATE TABLE IF NOT EXISTS `glpi_plugin_reservaplus_rules` (
             `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -152,13 +137,11 @@ function plugin_reservaplus_run_install(): bool
 
     if (!$config) {
         $DB->insert('glpi_plugin_reservaplus_configs', [
-            'approval_mode'            => 'rules',
             'default_duration_minutes' => 60,
             'business_hours_start'     => '08:00:00',
             'business_hours_end'       => '18:00:00',
             'allow_recurring'          => 1,
             'notify_requester'         => 1,
-            'notify_approver'          => 1,
             'date_creation'            => date('Y-m-d H:i:s'),
             'date_mod'                 => date('Y-m-d H:i:s'),
         ]);

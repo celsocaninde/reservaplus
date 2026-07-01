@@ -10,9 +10,6 @@ use Session;
 
 class ReservationRequest extends CommonDBTM
 {
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_APPROVED = 'approved';
-    public const STATUS_REFUSED = 'refused';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_CREATED = 'created';
 
@@ -64,7 +61,7 @@ class ReservationRequest extends CommonDBTM
     public static function canCancelRow(array $row): bool
     {
         $status = (string) ($row['status'] ?? '');
-        if (in_array($status, [self::STATUS_CANCELLED, self::STATUS_REFUSED], true)) {
+        if ($status === self::STATUS_CANCELLED) {
             return false;
         }
         return self::canDeleteRow($row);
@@ -152,7 +149,7 @@ class ReservationRequest extends CommonDBTM
             'WHERE'  => [
                 'recurrence_group' => $group,
                 'begin'            => ['>=', $now],
-                'status'           => [self::STATUS_CREATED, self::STATUS_PENDING, self::STATUS_APPROVED],
+                'status'           => [self::STATUS_CREATED],
             ],
             'ORDER'  => ['begin ASC'],
             'LIMIT'  => 500,
@@ -197,12 +194,6 @@ class ReservationRequest extends CommonDBTM
             return false;
         }
 
-        if ($DB->tableExists(Approval::getTable())) {
-            $DB->delete(Approval::getTable(), [
-                'plugin_reservaplus_requests_id' => $requestId,
-            ]);
-        }
-
         NotificationService::webhook('reservation.cancelled', (array) $request);
 
         // Deleta diretamente — permissão já verificada acima via canDeleteRow()
@@ -212,11 +203,8 @@ class ReservationRequest extends CommonDBTM
     public static function getStatusOptions(): array
     {
         return [
-            self::STATUS_PENDING   => __('Pendente', 'reservaplus'),
-            self::STATUS_APPROVED  => __('Aprovada', 'reservaplus'),
-            self::STATUS_REFUSED   => __('Recusada', 'reservaplus'),
-            self::STATUS_CANCELLED => __('Cancelada', 'reservaplus'),
             self::STATUS_CREATED   => __('Criada', 'reservaplus'),
+            self::STATUS_CANCELLED => __('Cancelada', 'reservaplus'),
         ];
     }
 
@@ -229,9 +217,9 @@ class ReservationRequest extends CommonDBTM
     public static function getStatusClass(string $status): string
     {
         return match ($status) {
-            self::STATUS_APPROVED, self::STATUS_CREATED => 'reservaplus-badge-approved',
-            self::STATUS_REFUSED, self::STATUS_CANCELLED => 'reservaplus-badge-danger',
-            default => 'reservaplus-badge-pending',
+            self::STATUS_CREATED   => 'reservaplus-badge-approved',
+            self::STATUS_CANCELLED => 'reservaplus-badge-danger',
+            default                => 'reservaplus-badge-approved',
         };
     }
 
@@ -531,7 +519,7 @@ class ReservationRequest extends CommonDBTM
 
             $itemCell = Html::cleanInputText(self::getItemDisplayName($row));
             if ($hasForOther) {
-                $itemCell .= " <span class='reservaplus-badge reservaplus-badge-pending' title='" . __('Reservado para', 'reservaplus') . "'><i class='ti ti-user-share' style='font-size:0.75rem'></i> " . Html::cleanInputText($forName) . '</span>';
+                $itemCell .= " <span class='reservaplus-badge reservaplus-badge-approved' title='" . __('Reservado para', 'reservaplus') . "'><i class='ti ti-user-share' style='font-size:0.75rem'></i> " . Html::cleanInputText($forName) . '</span>';
             }
             echo '<td>' . $itemCell . '</td>';
 

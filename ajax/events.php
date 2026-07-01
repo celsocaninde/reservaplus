@@ -86,8 +86,6 @@ if ($DB->tableExists(ReservationRequest::getTable())) {
         ReservationRequest::getTable() . '.begin'  => ['<', $end],
         ReservationRequest::getTable() . '.status' => [
             ReservationRequest::STATUS_CREATED,
-            ReservationRequest::STATUS_PENDING,
-            ReservationRequest::STATUS_APPROVED,
         ],
     ];
     if ($allowedItemIds !== null) {

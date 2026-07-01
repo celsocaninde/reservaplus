@@ -14,17 +14,14 @@ namespace GlpiPlugin\Reservaplus;
  */
 class NotificationService
 {
-    public const EVENT_REQUEST_CREATED     = 'request_created';
     public const EVENT_RESERVATION_CREATED = 'reservation_created';
-    public const EVENT_APPROVED            = 'approved';
-    public const EVENT_REFUSED             = 'refused';
     public const EVENT_CANCELLED           = 'cancelled';
 
     /**
      * Notifica um usuário sobre um evento de reserva.
      *
      * $channelEnabled permite desligar o envio por configuração (ex.:
-     * notify_requester / notify_approver) mantendo o registro de auditoria.
+     * notify_requester) mantendo o registro de auditoria.
      */
     public static function notify(string $event, int $userId, string $subject, string $body, bool $channelEnabled = true): void
     {
@@ -57,46 +54,6 @@ class NotificationService
         if ($fireWebhook) {
             self::webhook('reservation.created', $request + ['item_label' => $item, 'period_label' => $period]);
         }
-    }
-
-    public static function requestCreated(array $request): void
-    {
-        $userId = (int) ($request['users_id_for'] ?? $request['users_id_requester'] ?? 0);
-        $item   = self::itemLabel($request);
-        $period = self::periodLabel($request);
-        self::notify(
-            self::EVENT_REQUEST_CREATED,
-            $userId,
-            __('Solicitação enviada', 'reservaplus'),
-            sprintf(__("Sua solicitação de reserva de %s para %s foi enviada e aguarda aprovação.", 'reservaplus'), $item, $period),
-            self::configFlagEnabled('notify_requester')
-        );
-    }
-
-    public static function approved(array $request): void
-    {
-        $userId = (int) ($request['users_id_for'] ?? $request['users_id_requester'] ?? 0);
-        $item   = self::itemLabel($request);
-        $period = self::periodLabel($request);
-        self::notify(
-            self::EVENT_APPROVED,
-            $userId,
-            __('Reserva aprovada', 'reservaplus'),
-            sprintf(__("Sua reserva de %s para %s foi aprovada.", 'reservaplus'), $item, $period),
-            self::configFlagEnabled('notify_requester')
-        );
-    }
-
-    public static function refused(array $request, string $reason = ''): void
-    {
-        $userId = (int) ($request['users_id_for'] ?? $request['users_id_requester'] ?? 0);
-        $item   = self::itemLabel($request);
-        $period = self::periodLabel($request);
-        $body   = sprintf(__("Sua reserva de %s para %s foi recusada.", 'reservaplus'), $item, $period);
-        if (trim($reason) !== '') {
-            $body .= "\n\n" . __('Motivo:', 'reservaplus') . ' ' . trim($reason);
-        }
-        self::notify(self::EVENT_REFUSED, $userId, __('Reserva recusada', 'reservaplus'), $body, self::configFlagEnabled('notify_requester'));
     }
 
     public static function cancelled(array $request): void
@@ -192,23 +149,6 @@ class NotificationService
         self::log('webhook.' . $event, 0, $url, $status, $detail !== '' ? $detail : $event);
     }
 
-    /**
-     * Avisa os aprovadores (usuários com direito de aprovação) de que existe
-     * uma nova solicitação aguardando decisão. Respeita a flag notify_approver.
-     */
-    public static function requestSubmittedToApprovers(array $request): void
-    {
-        $enabled = self::configFlagEnabled('notify_approver');
-        $item    = self::itemLabel($request);
-        $period  = self::periodLabel($request);
-        $subject = __('Nova solicitação de reserva', 'reservaplus');
-        $body    = sprintf(__('Uma reserva de %s para %s aguarda aprovação.', 'reservaplus'), $item, $period);
-
-        foreach (self::getApproverUserIds() as $approverId) {
-            self::notify(self::EVENT_REQUEST_CREATED, $approverId, $subject, $body, $enabled);
-        }
-    }
-
     // ---- Internos ------------------------------------------------------
 
     private static function notificationsEnabled(): bool
@@ -221,71 +161,6 @@ class NotificationService
     {
         $config = Config::getSingleton();
         return (int) ($config->fields[$field] ?? 1) === 1;
-    }
-
-    /**
-     * IDs de usuários ativos que podem aprovar reservas (perfis com o direito
-     * plugin_reservaplus_approval). Usado só na criação de solicitações.
-     *
-     * @return int[]
-     */
-    private static function getApproverUserIds(): array
-    {
-        global $DB;
-
-        if (
-            !$DB->tableExists('glpi_profilerights')
-            || !$DB->tableExists('glpi_profiles_users')
-            || !$DB->tableExists('glpi_users')
-        ) {
-            return [];
-        }
-
-        $profileIds = [];
-        foreach ($DB->request([
-            'SELECT' => ['profiles_id'],
-            'FROM'   => 'glpi_profilerights',
-            'WHERE'  => [
-                'name' => Approval::$rightname,
-                ['rights' => ['>', 0]],
-            ],
-        ]) as $row) {
-            $pid = (int) ($row['profiles_id'] ?? 0);
-            if ($pid > 0) {
-                $profileIds[$pid] = true;
-            }
-        }
-
-        if ($profileIds === []) {
-            return [];
-        }
-
-        $userIds = [];
-        foreach ($DB->request([
-            'SELECT'     => ['glpi_profiles_users.users_id'],
-            'DISTINCT'   => true,
-            'FROM'       => 'glpi_profiles_users',
-            'INNER JOIN' => [
-                'glpi_users' => [
-                    'FKEY' => [
-                        'glpi_profiles_users' => 'users_id',
-                        'glpi_users'          => 'id',
-                    ],
-                ],
-            ],
-            'WHERE' => [
-                'glpi_profiles_users.profiles_id' => array_keys($profileIds),
-                'glpi_users.is_active'            => 1,
-                'glpi_users.is_deleted'           => 0,
-            ],
-        ]) as $row) {
-            $uid = (int) ($row['users_id'] ?? 0);
-            if ($uid > 0) {
-                $userIds[$uid] = true;
-            }
-        }
-
-        return array_keys($userIds);
     }
 
     private static function getUserEmail(int $userId): string

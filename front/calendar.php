@@ -45,8 +45,6 @@ function plugin_reservaplus_calendar_events(string $start, string $end): array
                 'begin'  => ['<', $end],
                 'status' => [
                     ReservationRequest::STATUS_CREATED,
-                    ReservationRequest::STATUS_PENDING,
-                    ReservationRequest::STATUS_APPROVED,
                 ],
             ],
             'LIMIT' => 500,
@@ -73,7 +71,7 @@ function plugin_reservaplus_calendar_events(string $start, string $end): array
                 continue;
             }
             $events[] = [
-                'title' => ReservationRequest::getStatusLabel((string) ($row['status'] ?? ReservationRequest::STATUS_PENDING)) . ' #' . (int) ($row['reservationitems_id'] ?? 0),
+                'title' => ReservationRequest::getStatusLabel((string) ($row['status'] ?? ReservationRequest::STATUS_CREATED)) . ' #' . (int) ($row['reservationitems_id'] ?? 0),
                 'start' => (string) ($row['begin'] ?? ''),
                 'type'  => 'request',
             ];
@@ -302,7 +300,6 @@ echo '</div>';
 echo "<div class='reservaplus-calendar-legend'>";
 echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-native'></span>" . __('Reserva confirmada (GLPI)', 'reservaplus') . '</div>';
 echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-active'></span>" . __('Reserva ativa', 'reservaplus') . '</div>';
-echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-pending'></span>" . __('Aguardando aprovação', 'reservaplus') . '</div>';
 echo "<div class='reservaplus-calendar-legend-item'><span class='reservaplus-calendar-legend-dot reservaplus-legend-block'></span>" . __('Bloqueio de horário', 'reservaplus') . '</div>';
 echo '</div>';
 echo '</section>';
